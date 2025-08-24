@@ -1,2013 +1,2589 @@
----
-title: TAM API Documentation
----
+﻿TAM API Documentation ![](Aspose.Words.25149484-45c4-49fe-97f2-88d952376241.001.png)
 
-This document provides structured documentation for the available
-APIs.  
-Each API includes details such as purpose, request structure,
-parameters, authentication, and example JSON responses.
+This document provides structured documentation for the available APIs. 
 
-# Base URL
+Each API includes details such as purpose, request structure, parameters, authentication, and example JSON responses. 
 
-https://localhost/api.php/v1/
+**Base URL** 
 
-# Authentication
+https://localhost/api.php/v1/ 
 
-All API endpoints require Bearer Token authentication.
+**Authentication** 
 
-Header Format:
+All API endpoints require Bearer Token authentication. Header Format: 
 
-Authorization: Bearer \[BEARER_TOKEN\]
+Authorization: Bearer [BEARER\_TOKEN]
 
-# Endpoints Index
+**Endpoints Index** 
 
-\- chat_summary_fb15
+- chat\_summary\_fb15 
+- check\_chat\_usage 
+- check\_counsellor\_access 
+- check\_maintenance 
+- check\_merge\_accounts 
+- check\_unique\_user\_name 
+- check\_valid\_email 
+- confirm\_merge\_accounts 
+- create\_audio\_conference 
+- create\_user 
+- delete\_user\_account 
+- get\_current\_plan\_summary 
+- get\_current\_share\_permissions 
+- get\_random\_quote 
+- ignore\_merge\_account 
+- initiate\_subscription\_payment 
+- send\_registration\_otp 
+- show\_plans 
+- subscription\_payment\_confirmation 
+- tam\_connections\_consent 
+- third\_banner 
+- update\_user\_access\_code 
+- update\_user\_information 
+- validate\_referral\_code 
+- audio\_transcribe 
+- check\_tam\_connections\_consent 
+- generate\_chat\_summary 
+- get\_complete\_ysam\_post 
+- google\_audio\_transcribe 
+- list\_tam\_user\_conversations\_dashboard 
+- list\_ysam\_posts 
+- register\_tam\_connections\_consent 
+- tam\_connections\_block\_user 
+- tam\_connections\_send\_message 
+- translate 
+- upload\_audio 
+- user\_conversations\_load 
+- ysam\_add\_update\_article 
+- ysam\_check\_usage\_tam\_connections 
+- ysam\_connect\_to\_user 
+- ysam\_follow\_user 
+- ysam\_get\_all\_categories 
+- ysam\_initialize\_form 
+- ysam\_report\_user\_post 
+- ysam\_review\_message 
+- ysam\_translate 
+- share\_private\_app\_data 
 
-\- check_chat_usage
+**chat\_summary\_fb15** 
 
-\- check_counsellor_access
+File: api\_chat\_summary\_fb15.php Method: POST 
 
-\- check_maintenance
+Description: Generates a summary of past chats for a user using an external AI service. It fetches chat history, generates a summary if one doesn't exist, and returns the chat history with summaries. The generated summary includes mood analysis and identifies a central topic. 
 
-\- check_merge_accounts
+**Parameters** 
 
-\- check_unique_user_name
+Name 
 
-\- check_valid_email
+user\_id number\_of\_chats 
 
-\- confirm_merge_accounts
+Type  Required int  Yes 
 
-\- create_audio_conference
+int  No 
 
-\- create_user
+Description The user's ID. 
 
-\- delete_user_account
+The number of chat summaries to retrieve. Defaults to a minimum message count for summary generation. 
 
-\- get_current_plan_summary
+**Responses** 
 
-\- get_current_share_permissions
+Success (code: 1) 
 
-\- get_random_quote
+{ 
 
-\- ignore_merge_account
+`  `"code": "1", 
 
-\- initiate_subscription_payment
+`  `"data": [ 
 
-\- send_registration_otp
+`    `{ 
 
-\- show_plans
+`      `"date": "21 Dec 2023 10:30 am (A few hours ago)", 
 
-\- subscription_payment_confirmation
+`      `"counsellor": "Counsellor Name", 
 
-\- tam_connections_consent
+`      `"chat\_topic": "Romantic Relationship Issues", 
 
-\- third_banner
+`      `"feedback\_star": "4", 
 
-\- update_user_access_code
+`      `"summary": "This is a detailed summary of the conversation.<br><b>Close Chat Remarks:</b> A remark from the counsellor." 
 
-\- update_user_information
+`    `} 
 
-\- validate_referral_code
+`  `] 
 
-\- audio_transcribe
+}
 
-\- check_tam_connections_consent
+Failure (code: 0) 
 
-\- generate_chat_summary
+{ 
 
-\- get_complete_ysam_post
+`  `"code": "0", 
 
-\- google_audio_transcribe
+`  `"message": "User id does not exist" }
 
-\- list_tam_user_conversations_dashboard
+**check\_chat\_usage** 
 
-\- list_ysam_posts
+File: api\_check\_chat\_usage.php Method: POST 
 
-\- register_tam_connections_consent
+Description: Checks a user's usage against their subscribed chat plan (e.g., Feel Better in 15 or Therapy Over Text) and determines if they can initiate a new chat. 
 
-\- tam_connections_block_user
+**Parameters** 
 
-\- tam_connections_send_message
+Name user\_reference\_id usage\_check\_type 
 
-\- translate
+user\_lang 
 
-\- upload_audio
+Type  Required  Description 
 
-\- user_conversations_load
+int  Yes  The user's ID. string  Yes  The type of chat to 
 
-\- ysam_add_update_article
+check, either "fb15" or another type. 
 
-\- ysam_check_usage_tam_connections
+string  No  The user's language 
 
-\- ysam_connect_to_user
+preference. 
 
-\- ysam_follow_user
+**Responses** 
 
-\- ysam_get_all_categories
+Success (code: 1) 
 
-\- ysam_initialize_form
+{ 
 
-\- ysam_report_user_post
+`  `"code": 1, 
 
-\- ysam_review_message
+`  `"minutes\_available": 15,   "words\_available": "",   "show\_buttons": { 
 
-\- ysam_translate
+`    `"count": 0, 
 
-\- share_private_app_data
+`    `"buttons": [] 
 
-# chat_summary_fb15
+`  `} 
 
-File: api_chat_summary_fb15.php
+}
 
-Method: POST
+Failure (code: 0) 
 
-Description: Generates a summary of past chats for a user using an
-external AI service. It fetches chat history, generates a summary if one
-doesn\'t exist, and returns the chat history with summaries. The
-generated summary includes mood analysis and identifies a central topic.
+{ 
 
-## Parameters
+`  `"code": 0, 
 
-| Name            | Type | Required | Description                                                                                           |
-|-----------------|------|----------|-------------------------------------------------------------------------------------------------------|
-| user_id         | int  | Yes      | The user\'s ID.                                                                                       |
-| number_of_chats | int  | No       | The number of chat summaries to retrieve. Defaults to a minimum message count for summary generation. |
+`  `"text": "Your usage for Feel Better in 15 has been exceeded. Please consider Therapy Over Text as an alternative.", 
 
-## Responses
+`  `"show\_buttons": { 
 
-Success (code: 1)
+`    `"count": 3, 
 
-{  
-\"code\": \"1\",  
-\"data\": \[  
-{  
-\"date\": \"21 Dec 2023 10:30 am (A few hours ago)\",  
-\"counsellor\": \"Counsellor Name\",  
-\"chat_topic\": \"Romantic Relationship Issues\",  
-\"feedback_star\": \"4\",  
-\"summary\": \"This is a detailed summary of the
-conversation.\<br\>\<b\>Close Chat Remarks:\</b\> A remark from the
-counsellor.\"  
-}  
-\]  
-}
+`    `"buttons": [ 
 
-Failure (code: 0)
+`      `{ 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User id does not exist\"  
-}
+`        `"type": "redirect", 
+
+`        `"text": "Go to Therapy over Text", 
+
+`        `"redirect\_code": "therapy" 
+
+`      `}, 
+
+`      `{ 
 
-# check_chat_usage
+`        `"type": "redirect", 
 
-File: api_check_chat_usage.php
+`        `"text": "View Subscription Plans",         "redirect\_code": "subscription" 
 
-Method: POST
+`      `}, 
 
-Description: Checks a user\'s usage against their subscribed chat plan
-(e.g., Feel Better in 15 or Therapy Over Text) and determines if they
-can initiate a new chat.
+`      `{ 
 
-## Parameters
+`        `"type": "close", 
 
-| Name              | Type   | Required | Description                                                 |
-|-------------------|--------|----------|-------------------------------------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                                             |
-| usage_check_type  | string | Yes      | The type of chat to check, either \"fb15\" or another type. |
-| user_lang         | string | No       | The user\'s language preference.                            |
+`        `"text": "Close", 
 
-## Responses
+`        `"redirect\_code": "close" 
 
-Success (code: 1)
-
-{  
-\"code\": 1,  
-\"minutes_available\": 15,  
-\"words_available\": \"\",  
-\"show_buttons\": {  
-\"count\": 0,  
-\"buttons\": \[\]  
-}  
+`      `} 
+
+`    `] 
+
+`  `} 
+
 }
 
-Failure (code: 0)
+**check\_counsellor\_access** 
 
-{  
-\"code\": 0,  
-\"text\": \"Your usage for Feel Better in 15 has been exceeded. Please
-consider Therapy Over Text as an alternative.\",  
-\"show_buttons\": {  
-\"count\": 3,  
-\"buttons\": \[  
-{  
-\"type\": \"redirect\",  
-\"text\": \"Go to Therapy over Text\",  
-\"redirect_code\": \"therapy\"  
-},  
-{  
-\"type\": \"redirect\",  
-\"text\": \"View Subscription Plans\",  
-\"redirect_code\": \"subscription\"  
-},  
-{  
-\"type\": \"close\",  
-\"text\": \"Close\",  
-\"redirect_code\": \"close\"  
-}  
-\]  
-}  
-}
+File: api\_check\_counsellor\_access.php Method: POST 
 
-# check_counsellor_access
+Description: Authenticates a user with a Google theablemind.com domain and provisions them as a counselor, admin, or ops lead if they do not exist in the system. 
 
-File: api_check_counsellor_access.php
+**Parameters** 
 
-Method: POST
+Name  Type  Required  Description access\_token  string  Yes  The Google access 
 
-Description: Authenticates a user with a Google theablemind.com domain
-and provisions them as a counselor, admin, or ops lead if they do not
-exist in the system.
-
-## Parameters
-
-| Name         | Type   | Required | Description                      |
-|--------------|--------|----------|----------------------------------|
-| access_token | string | Yes      | The Google access token.         |
-| user_lang    | string | No       | The user\'s language preference. |
-
-## Responses
-
-Success (code: 1)
-
-\[  
-{  
-\"code\": 1,  
-\"type\": \[\"A\", \"C\"\],  
-\"c_id\": \"123\",  
-\"c_name\": \"John Doe\",  
-\"c_email\": \"john.doe@theablemind.com\",  
-\"c_phone\": \"1234567890\",  
-\"c_timezone\": \"Asia/Kolkata\",  
-\"c_age\": \"35\",  
-\"c_gender\": \"M\",  
-\"c_picture\": \"http://example.com/images/john.jpg\",  
-\"c_lang_code\": \"en\",  
-\"c_country\": \"IN\",  
-\"c_video\": \"http://example.com/videos/john_intro.mp4\",  
-\"message\": \"\"  
-}  
-\]
+token. 
 
-Failure (code: 0)
+user\_lang  string  No  The user's language 
 
-\[  
-{  
-\"code\": 0,  
-\"type\": \[\],  
-\"c_id\": \"\",  
-\"c_name\": \"\",  
-\"c_email\": \"\",  
-\"c_phone\": \"\",  
-\"c_timezone\": \"\",  
-\"c_age\": \"\",  
-\"c_gender\": \"\",  
-\"c_picture\": \"\",  
-\"c_lang_code\": \"\",  
-\"c_country\": \"\",  
-\"c_video\": \"\",  
-\"message\": \"Access Denied. This feature is only available to
-employees of The Able Mind.\"  
-}  
-\]
+preference. 
 
-# check_maintenance
+**Responses** 
 
-File: api_check_maintenance.php
+Success (code: 1) 
 
-Method: POST
+[ 
 
-Description: Checks for any ongoing system maintenance and informs the
-user if specific app features are disabled.
+`  `{ 
 
-## Parameters
+`    `"code": 1, 
 
-| Name      | Type   | Required | Description                      |
-|-----------|--------|----------|----------------------------------|
-| user_lang | string | No       | The user\'s language preference. |
-| timezone  | string | No       | The user\'s timezone.            |
+`    `"type": ["A", "C"], 
 
-## Responses
+`    `"c\_id": "123", 
 
-Success (returns a status object)
+`    `"c\_name": "John Doe", 
 
-{  
-\"UPDATION_INPROGRESS\": true,  
-\"MESSAGE_TITLE\": \"Maintenance Alert\",  
-\"MESSAGE\": \"We are undergoing a scheduled maintenance. The service
-will be back on Saturday, 24 Aug 2024 \[05:30 am IST\]\",  
-\"LIVE_BACK_TIME\": \"2024-08-24T00:00:00Z\",  
-\"REGISTRATION\": false,  
-\"FEEL_BETTER_IN_15\": true,  
-\"THERAPY_OVER_TEXT\": true,  
-\"NIGHT_AUXIE\": false,  
-\"TROOPERS_TOGETHER\": true,  
-\"LIBRARY\": false,  
-\"RESOURCES\": false,  
-\"ASSESSMENTS\": false,  
-\"CONNECTIONS\": false,  
-\"YSAM\": false  
-}
+`    `"c\_email": "john.doe@theablemind.com", 
 
-No Maintenance (returns a default object)
+`    `"c\_phone": "1234567890", 
 
-{  
-\"UPDATION_INPROGRESS\": false,  
-\"MESSAGE_TITLE\": \"\",  
-\"MESSAGE\": \"\",  
-\"LIVE_BACK_TIME\": \"\",  
-\"REGISTRATION\": false,  
-\"FEEL_BETTER_IN_15\": false,  
-\"THERAPY_OVER_TEXT\": false,  
-\"NIGHT_AUXIE\": false,  
-\"TROOPERS_TOGETHER\": false,  
-\"LIBRARY\": false,  
-\"RESOURCES\": false,  
-\"ASSESSMENTS\": false,  
-\"CONNECTIONS\": false,  
-\"YSAM\": false  
-}
+`    `"c\_timezone": "Asia/Kolkata", 
 
-# check_merge_accounts
+`    `"c\_age": "35", 
 
-File: api_check_merge_accounts.php
+`    `"c\_gender": "M", 
 
-Method: POST
+`    `"c\_picture": "http://example.com/images/john.jpg", 
 
-Description: Checks if a user has multiple accounts that should be
-merged, typically based on email or phone number.
+`    `"c\_lang\_code": "en", 
 
-## Parameters
+`    `"c\_country": "IN", 
 
-| Name       | Type   | Required | Description                                  |
-|------------|--------|----------|----------------------------------------------|
-| user_email | string | No       | The user\'s email address.                   |
-| user_phone | string | No       | The user\'s phone number.                    |
-| login_type | string | No       | The login type, defaults to \'E\' for email. |
+`    `"c\_video": "http://example.com/videos/john\_intro.mp4",     "message": "" 
 
-## Responses
+`  `} 
 
-Success (status: success)
+]
 
-{  
-\"status\": \"success\",  
-\"data\": {  
-\"show_merge_screen\": true,  
-\"primary_account_name\": \"User Name\",  
-\"secondary_account_name\": \"Duplicate User\",  
-\"message\": \"We have found a duplicate account for you. Would you like
-to merge them?\"  
-}  
-}
+Failure (code: 0) 
 
-Error (status: error)
+[ 
 
-{  
-\"status\": \"error\",  
-\"data\": \"A technical issue has occurred.\"  
-}
+`  `{ 
 
-# check_unique_user_name
+`    `"code": 0, 
 
-File: api_check_unique_user_name.php
+`    `"type": [], 
 
-Method: POST
+`    `"c\_id": "", 
 
-Description: Validates if a user name is unique in the system.
+`    `"c\_name": "",     "c\_email": "", 
 
-## Parameters
+`    `"c\_phone": "", 
 
-| Name      | Type   | Required | Description                      |
-|-----------|--------|----------|----------------------------------|
-| user_name | string | Yes      | The user name to validate.       |
-| login_key | string | No       | The user\'s login key.           |
-| user_lang | string | No       | The user\'s language preference. |
+`    `"c\_timezone": "", 
 
-## Responses
+`    `"c\_age": "", 
 
-Success (response_code: 1)
+`    `"c\_gender": "", 
 
-{  
-\"response_code\": \"1\",  
-\"message\": \"success\",  
-\"status\": \"success\",  
-\"data\": \"\"  
-}
+`    `"c\_picture": "", 
 
-Failure (response_code: 0)
+`    `"c\_lang\_code": "", 
 
-{  
-\"response_code\": \"0\",  
-\"message\": \"User Name is not unique\",  
-\"status\": \"failure\",  
-\"data\": \"\"  
-}
+`    `"c\_country": "", 
 
-# check_valid_email
+`    `"c\_video": "", 
 
-File: api_check_valid_email.php
+`    `"message": "Access Denied. This feature is only available to employees of The Able Mind." 
 
-Method: POST
+`  `} 
 
-Description: Validates an email address by checking for a valid format,
-existing MX records, and whether the domain is a known disposable email
-provider.
+]
 
-## Parameters
+**check\_maintenance** 
 
-| Name       | Type   | Required | Description                    |
-|------------|--------|----------|--------------------------------|
-| user_email | string | Yes      | The email address to validate. |
+File: api\_check\_maintenance.php Method: POST 
 
-## Responses
+Description: Checks for any ongoing system maintenance and informs the user if specific app features are disabled. 
 
-Success (response_code: 0)
+**Parameters** 
 
-{  
-\"response_code\": \"0\",  
-\"message\": \"Email id provided is valid.\",  
-\"status\": \"success\",  
-\"data\": \"\"  
-}
+Name  Type  Required  Description user\_lang  string  No  The user's language 
 
-Failure (response_code: -1)
+preference. 
 
-{  
-\"response_code\": \"-1\",  
-\"message\": \"Email domain (mailinator.com) is invalid.\",  
-\"status\": \"failure\",  
-\"data\": \"\"  
-}
+timezone  string  No  The user's timezone. **Responses** 
 
-# confirm_merge_accounts
+Success (returns a status object) 
 
-File: api_confirm_merge_accounts.php
+{ 
 
-Method: POST
+`  `"UPDATION\_INPROGRESS": true, 
 
-Description: Confirms and completes the merging of two user accounts by
-linking two different user profiles into a single account.
+`  `"MESSAGE\_TITLE": "Maintenance Alert", 
 
-## Parameters
+`  `"MESSAGE": "We are undergoing a scheduled maintenance. The service will be back on Saturday, 24 Aug 2024 [05:30 am IST]", 
 
-| Name         | Type   | Required | Description                                                                         |
-|--------------|--------|----------|-------------------------------------------------------------------------------------|
-| user_id      | int    | Yes      | The ID of the user initiating the merge.                                            |
-| duplicate_id | int    | Yes      | The ID of the account to merge into the primary account.                            |
-| login_type   | string | Yes      | The primary login type for the merged account (\'E\' for email or \'P\' for phone). |
+`  `"LIVE\_BACK\_TIME": "2024-08-24T00:00:00Z", 
 
-## Responses
+`  `"REGISTRATION": false, 
 
-Success (status: success)
+`  `"FEEL\_BETTER\_IN\_15": true, 
 
-{  
-\"status\": \"success\",  
-\"data\": \"Accounts successfully merged\"  
-}
+`  `"THERAPY\_OVER\_TEXT": true, 
+
+`  `"NIGHT\_AUXIE": false, 
+
+`  `"TROOPERS\_TOGETHER": true, 
+
+`  `"LIBRARY": false, 
+
+`  `"RESOURCES": false, 
 
-Error (status: error)
+`  `"ASSESSMENTS": false, 
 
-{  
-\"status\": \"error\",  
-\"data\": \"Error merging accounts\"  
+`  `"CONNECTIONS": false, 
+
+`  `"YSAM": false 
+
 }
 
-# create_audio_conference
+No Maintenance (returns a default object) 
 
-File: api_create_audio_conference.php
+{ 
 
-Method: POST
+`  `"UPDATION\_INPROGRESS": false,   "MESSAGE\_TITLE": "", 
 
-Description: Creates or updates an audio conference.
+`  `"MESSAGE": "", 
 
-## Parameters
+`  `"LIVE\_BACK\_TIME": "", 
 
-| Name                         | Type   | Required | Description                                                                                           |
-|------------------------------|--------|----------|-------------------------------------------------------------------------------------------------------|
-| conference_id                | string | Yes      | Unique ID for the conference. If it exists, all data will be updated; otherwise, it will be inserted. |
-| conference_duration          | int    | No       | Duration of the session in minutes. Defaults to 60.                                                   |
-| conference_start_time        | string | Yes      | Conference start date and time in \"Y-m-d H:i:s\" format.                                             |
-| conference_counsellor_keys   | string | Yes      | Comma-separated list of counsellor keys.                                                              |
-| conference_title             | string | Yes      | Title of the conference.                                                                              |
-| max_simultaneous_connections | int    | No       | Maximum number of simultaneous connections. Defaults to 20.                                           |
+`  `"REGISTRATION": false, 
 
-## Responses
+`  `"FEEL\_BETTER\_IN\_15": false,   "THERAPY\_OVER\_TEXT": false,   "NIGHT\_AUXIE": false, 
 
-Success (response_code: 1)
+`  `"TROOPERS\_TOGETHER": false,   "LIBRARY": false, 
 
-{  
-\"response_code\": \"1\",  
-\"message\": \"success\",  
-\"status\": \"success\",  
-\"data\": \"\"  
-}
+`  `"RESOURCES": false, 
+
+`  `"ASSESSMENTS": false, 
 
-Failure (response_code: 0)
+`  `"CONNECTIONS": false, 
 
-{  
-\"response_code\": \"0\",  
-\"message\": \"Error Creating / Updating Conference\",  
-\"status\": \"failure\",  
-\"data\": \"\"  
+`  `"YSAM": false 
+
 }
 
-# create_user
+**check\_merge\_accounts** 
 
-File: api_create_user.php
+File: api\_check\_merge\_accounts.php Method: POST 
 
-Method: POST
+Description: Checks if a user has multiple accounts that should be merged, typically based on email or phone number. 
 
-Description: Registers a new user account with various details such as
-name, email, phone, and demographic information.
+**Parameters** 
 
-## Parameters
+Name  Type user\_email  string 
 
-| Name                       | Type   | Required    | Description                         |
-|----------------------------|--------|-------------|-------------------------------------|
-| login_type                 | string | Yes         | \'E\' for email or \'P\' for phone. |
-| user_name                  | string | Yes         | User\'s name.                       |
-| user_email                 | string | Conditional | Required if login_type is \'E\'.    |
-| user_phone_number          | string | Conditional | Required if login_type is \'P\'.    |
-| user_password              | string | No          | The user\'s password.               |
-| user_age                   | string | No          | User\'s age.                        |
-| user_sex                   | string | No          | User\'s gender.                     |
-| user_lang                  | string | No          | The user\'s language preference.    |
-| external_login             | string | No          | External login identifier.          |
-| user_guardian_name         | string | No          | Guardian name.                      |
-| user_guardian_phone        | string | No          | Guardian phone.                     |
-| user_guardian_relationship | string | No          | Guardian relationship.              |
-| client_ip_address          | string | No          | Client IP address.                  |
-| device_id                  | string | No          | Device ID.                          |
-| access_code                | string | No          | Access code.                        |
+user\_phone  string login\_type  string 
 
-## Responses
+Required  Description 
 
-Success (response_code: 1)
+No  The user's email 
 
-{  
-\"response_code\": \"1\",  
-\"message\": \"success\",  
-\"status\": \"success\",  
-\"data\": \"\",  
-\"show_user_usage_policy\": \"\"  
-}
+address. 
 
-Failure (response_code: 0)
+No  The user's phone 
 
-{  
-\"response_code\": \"0\",  
-\"message\": \"User Registration failed as Login Type field missing\",  
-\"status\": \"failure\",  
-\"data\": \"\",  
-\"show_user_usage_policy\": \"\"  
-}
+number. 
 
-# delete_user_account
+No  The login type, 
 
-File: api_delete_user_account.php
+defaults to 'E' for email. 
 
-Method: POST
+**Responses** 
 
-Description: Deletes a user\'s account and removes their session from
-the database. It requires a delete_account flag and user/session details
-for validation.
+Success (status: success) 
 
-## Parameters
+{ 
 
-| Name           | Type   | Required | Description                               |
-|----------------|--------|----------|-------------------------------------------|
-| delete_account | bool   | Yes      | A flag to confirm account deletion.       |
-| user_id        | int    | Yes      | The ID of the user to be deleted.         |
-| session_token  | string | Yes      | The user\'s session token for validation. |
-| user_lang      | string | No       | The user\'s language preference.          |
+`  `"status": "success", 
 
-## Responses
+`  `"data": { 
 
-Success (code: 1)
+`    `"show\_merge\_screen": true, 
 
-{  
-\"code\": 1,  
-\"message\": \"delete_success\"  
-}
+`    `"primary\_account\_name": "User Name", 
 
-Failure (code: 0)
+`    `"secondary\_account\_name": "Duplicate User", 
 
-{  
-\"code\": 0,  
-\"message\": \"generic_error\"  
+`    `"message": "We have found a duplicate account for you. Would you like to merge them?" 
+
+`  `} 
+
 }
 
-# get_current_plan_summary
+Error (status: error) 
 
-File: api_get_current_plan_summary.php
+{ 
 
-Method: POST
+`  `"status": "error", 
 
-Description: Retrieves a summary of a user\'s current subscription plan,
-including details like plan type and end date.
+`  `"data": "A technical issue has occurred." }
 
-## Parameters
+**check\_unique\_user\_name** 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | No       | The user\'s ID.                  |
-| user_email        | string | No       | The user\'s email.               |
-| user_key          | string | No       | A user key.                      |
-| user_lang         | string | No       | The user\'s language preference. |
-| client_ip_address | string | No       | The user\'s IP address.          |
+File: api\_check\_unique\_user\_name.php 
 
-## Responses
+Method: POST 
 
-Success (response_code: 1)
+Description: Validates if a user name is unique in the system. 
 
-{  
-\"response_code\": 1,  
-\"message\": \"success\",  
-\"status\": \"success\",  
-\"data\": {  
-\"end_date\": \"2024-12-31 23:59:59\",  
-\"plan_type\": \"Monthly Subscription\",  
-\"price_paid\": \"499\",  
-\"status\": \"Active\"  
-}  
-}
+**Parameters** 
 
-Failure (response_code: 0)
+Name  Type  Required user\_name  string  Yes 
 
-{  
-\"response_code\": 0,  
-\"message\": \"No active plan found\",  
-\"status\": \"failure\",  
-\"data\": {}  
-}
+login\_key  string  No user\_lang  string  No 
 
-# get_current_share_permissions
+Description 
 
-File: api_get_current_share.php
+The user name to validate. 
 
-Method: POST
+The user's login key. 
 
-Description: Fetches the user\'s current sharing permissions for various
-app features, such as a journal and mood tracker.
+The user's language preference. 
 
-## Parameters
+**Responses** 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                  |
-| user_lang         | string | No       | The user\'s language preference. |
+Success (response\_code: 1) 
 
-## Responses
+{ 
 
-Success (code: 1)
+`  `"response\_code": "1",   "message": "success",   "status": "success",   "data": "" 
 
-{  
-\"code\": 1,  
-\"message\": \"settings_loaded\",  
-\"data\": {  
-\"journal_shared\": true,  
-\"mood_tracker_shared\": false,  
-\"habit_tracker_shared\": true,  
-\"anxiety_tracker_shared\": false,  
-\"assessments_shared\": true  
-}  
 }
+
+Failure (response\_code: 0) 
+
+{ 
+
+`  `"response\_code": "0", 
+
+`  `"message": "User Name is not unique",   "status": "failure", 
 
-Failure (code: 0)
+`  `"data": "" 
 
-{  
-\"code\": 0,  
-\"message\": \"user_missing\"  
 }
 
-# get_random_quote
+**check\_valid\_email** 
 
-File: api_get_random_quote.php
+File: api\_check\_valid\_email.php Method: POST 
 
-Method: POST
+Description: Validates an email address by checking for a valid format, existing MX records, and whether the domain is a known disposable email provider. 
 
-Description: Retrieves a random quote from the database.
+**Parameters** 
 
-## Parameters
+Name  Type  Required  Description user\_email  string  Yes  The email address 
 
-| Name              | Type   | Required | Description                                  |
-|-------------------|--------|----------|----------------------------------------------|
-| user_lang         | string | No       | The preferred language for the quote.        |
-| user_reference_id | string | No       | The user\'s ID to fetch personalized quotes. |
+to validate. 
 
-## Responses
+**Responses** 
 
-Success
+Success (response\_code: 0) 
 
-{  
-\"quote\": \"The only way to do great work is to love what you do.\",  
-\"author\": \"Steve Jobs\"  
-}
+{ 
+
+`  `"response\_code": "0", 
 
-Failure
+`  `"message": "Email id provided is valid.",   "status": "success", 
 
-{  
-\"quote\": \"\",  
-\"author\": \"\"  
+`  `"data": "" 
+
 }
 
-# ignore_merge_account
+Failure (response\_code: -1) 
 
-File: api_ignore_merge_account.php
+{ 
 
-Method: POST
+`  `"response\_code": "-1", 
 
-Description: Ignores the flag to merge a user\'s accounts.
+`  `"message": "Email domain (mailinator.com) is invalid.",   "status": "failure", 
 
-## Parameters
+`  `"data": "" 
 
-| Name    | Type   | Required | Description     |
-|---------|--------|----------|-----------------|
-| user_id | string | Yes      | The user\'s ID. |
+}
 
-## Responses
+**confirm\_merge\_accounts** 
 
-Success (status: success)
+File: api\_confirm\_merge\_accounts.php Method: POST 
 
-{  
-\"status\": \"success\",  
-\"data\": \"Merge flag ignored for user\"  
-}
+Description: Confirms and completes the merging of two user accounts by linking two different user profiles into a single account. 
 
-Error (status: error)
+**Parameters** 
 
-{  
-\"status\": \"error\",  
-\"data\": \"Technical issue\"  
 }
+
+Name  Type user\_id  int 
 
-# initiate_subscription_payment
+duplicate\_id  int login\_type  string 
 
-File: api_initiate_subscription_payment.php
+Required  Description 
 
-Method: POST
+Yes  The ID of the user 
 
-Description: Initiates a subscription payment process, validates the
-user and plan, creates a payment entry in the database, and returns the
-necessary data for a Razorpay payment gateway.
+initiating the merge. 
 
-## Parameters
+Yes  The ID of the 
 
-| Name                  | Type   | Required | Description                           |
-|-----------------------|--------|----------|---------------------------------------|
-| user_reference_id     | int    | Yes      | The user\'s ID.                       |
-| plan_type             | string | Yes      | The plan\'s category code.            |
-| subscription_price    | string | No       | The subscription price.               |
-| subscription_discount | int    | No       | The subscription discount percentage. |
-| referral_code         | string | No       | A referral code to apply a discount.  |
+account to merge into the primary account. 
 
-## Responses
+Yes  The primary login 
 
-Success (code: 1)
+type for the merged account ('E' for email or 'P' for phone). 
 
-{  
-\"code\": \"1\",  
-\"razorpay_json\":
-\"{\"key\":\"\...\",\"amount\":1000,\"currency\":\"INR\",\"name\":\"The
-Able Mind\",\"description\":\"Monthly
-Plan\",\"image\":\"\...\",\"prefill\":{\"name\":\"John
-Doe\",\"email\":\"john.doe@example.com\",\"contact\":\"9876543210\"},\"notes\":{\"merchant_order_id\":\"\...\",\"category\":\"MONTHLY\",\"payment_gst_fees\":10,\"payment_price_wo_fees\":100,\"price_id\":123},\"order_id\":\"\...\",\"theme\":{\"color\":\"#5F9EA0\"},\"send_sms_hash\":true,\"method\":{\"netbanking\":true,\"card\":true,\"wallet\":true,\"upi\":true,\"emi\":false,\"pay
-later\":false}}\"  
 }
+
+**Responses** 
+
+Success (status: success) 
 
-Failure (code: 0)
+{ 
 
-{  
-\"code\": \"0\",  
-\"message\": \"Error initiating subscription.\"  
+`  `"status": "success", 
+
+`  `"data": "Accounts successfully merged" }
+
+Error (status: error) 
+
+{ 
+
+`  `"status": "error", 
+
+`  `"data": "Error merging accounts" 
+
 }
 
-# send_registration_otp
+**create\_audio\_conference** 
 
-File: api_send_registration_otp.php
+File: api\_create\_audio\_conference.php 
 
-Method: POST
+Method: POST 
 
-Description: Generates a one-time password (OTP) and sends it to a
-user\'s email for registration purposes.
+Description: Creates or updates an audio conference. 
 
-## Parameters
+**Parameters** 
 
-| Name       | Type   | Required | Description                      |
-|------------|--------|----------|----------------------------------|
-| user_email | string | Yes      | The user\'s email address.       |
-| user_lang  | string | No       | The user\'s language preference. |
 
-## Responses
+Name conference\_id 
 
-Success (code: 1)
+conference\_duration conference\_start\_time conference\_counsellor\_keys 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\"  
-}
+Type  Required  Description string  Yes  Unique ID for the 
 
-Failure (code: 0)
+conference. If it exists, all data will be updated; otherwise, it will be inserted. 
 
-{  
-\"code\": \"0\",  
-\"message\": \"Error sending OTP.\"  
-}
+int  No  Duration of the 
 
-# show_plans
+session in minutes. Defaults to 60. 
 
-File: api_show_plans.php
+string  Yes  Conference start 
 
-Method: POST
+date and time in "Y-m-d H:i:s" format. 
 
-Description: Retrieves a list of available subscription plans for a
-user, taking into account their location and any special offers.
+string  Yes  Comma-separated 
 
-## Parameters
+list of counsellor keys. 
 
-| Name      | Type    | Required | Description                          |
-|-----------|---------|----------|--------------------------------------|
-| user_key  | string  | No       | The user\'s key.                     |
-| user_lang | string  | No       | The user\'s language preference.     |
-| new       | boolean | No       | A flag to request a new JSON format. |
 
-## Responses
+conference\_title  string max\_simultaneous\_connections  int 
 
-Success (code: 1)
+Yes  Title of the 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\",  
-\"data\": \[  
-{  
-\"plan_id\": 1,  
-\"plan_name\": \"Monthly Plan\",  
-\"price\": \"499\",  
-\"currency\": \"INR\",  
-\"features\": \[\"Feature 1\", \"Feature 2\"\]  
-}  
-\]  
-}
+conference. 
 
-Failure (code: 0)
+No  Maximum number 
 
-{  
-\"code\": \"0\",  
-\"message\": \"error_retrieving_plans\"  
-}
+of simultaneous connections. Defaults to 20. 
 
-# subscription_payment_confirmation
 
-File: api_subscription_payment_confirmation.php
+**Responses** 
 
-Method: POST
+Success (response\_code: 1) 
 
-Description: Confirms a payment made through the Razorpay gateway. It
-verifies the payment signature, updates the database records for the
-subscription and payment, and sends a confirmation email/notification to
-the user.
+{ 
 
-## Parameters
+`  `"response\_code": "1",   "message": "success",   "status": "success", 
 
-| Name                | Type   | Required | Description                          |
-|---------------------|--------|----------|--------------------------------------|
-| razorpay_order_id   | string | Yes      | The order ID from Razorpay.          |
-| razorpay_payment_id | string | Yes      | The payment ID from Razorpay.        |
-| razorpay_signature  | string | Yes      | The payment signature from Razorpay. |
-| user_lang           | string | No       | The user\'s language preference.     |
 
-## Responses
+`  `"data": "" }
 
-Success (code: 1)
+Failure (response\_code: 0) 
 
-{  
-\"code\": \"1\",  
-\"message\": \"plan_confirmation\"  
-}
+{ 
+
+`  `"response\_code": "0", 
 
-Failure (code: 0)
+`  `"message": "Error Creating / Updating Conference",   "status": "failure", 
 
-{  
-\"code\": \"0\",  
-\"message\": \"payment_failed\"  
+`  `"data": "" 
+
 }
 
-# tam_connections_consent
+**create\_user** 
 
-File: api_tam_connections_consent_status.php
+File: api\_create\_user.php Method: POST 
 
-Method: POST
+Description: Registers a new user account with various details such as name, email, phone, and demographic information. 
 
-Description: This API checks if a user has consented to the \"TAM
-Connections\" feature. It returns the consent message if consent is
-required.
+**Parameters** 
 
-## Parameters
+Name login\_type 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                  |
-| user_lang         | string | No       | The user\'s language preference. |
+user\_name user\_email 
 
-## Responses
+user\_phone\_number user\_password 
 
-Consent Required (code: 0)
+user\_age user\_sex user\_lang 
 
-{  
-\"code\": \"0\",  
-\"text\": {  
-\"title\": \"Consent Title\",  
-\"introduction_1\": \"Introduction 1\",  
-\"introduction_2\": \"Introduction 2\",  
-\"introduction_guidelines\": \"Guidelines\",  
-\"consent_line_1\": \"Consent Line 1\",  
-\"consent_line_2\": \"Consent Line 2\",  
-\"consent_line_3\": \"Consent Line 3 with {XXXX} replacement\",  
-\"consent_line_4\": \"Consent Line 4\",  
-\"consent_line_5\": \"Consent Line 5\",  
-\"consent_line_6\": \"Consent Line 6\",  
-\"consent_line_7\": \"Consent Line 7\",  
-\"consent_line_8\": \"\",  
-\"consent_line_9\": \"\",  
-\"consent_final\": \"Final consent text\",  
-\"consent_text\": \"Accept\",  
-\"cancel_text\": \"Decline\"  
-}  
-}
+external\_login 
 
-Consent Granted (code: 1)
+Type  Required  Description string  Yes  'E' for email or 'P' 
 
-{  
-\"code\": \"1\"  
-}
+for phone. 
 
-# third_banner
+string  Yes  User's name. string  Conditional  Required if 
 
-File: api_third_banner.php
+login\_type is 'E'. 
 
-Method: POST
+string  Conditional  Required if 
 
-Description: Retrieves information for a third banner, including details
-on next appointments, Therapy Over Text (TOT) usage, and available
-counselor slots.
+login\_type is 'P'. string  No  The user's 
 
-## Parameters
+password. 
 
-| Name              | Type   | Required | Description                                               |
-|-------------------|--------|----------|-----------------------------------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                                           |
-| slots             | int    | No       | The number of counselor slots to retrieve. Defaults to 2. |
-| user_lang         | string | No       | The user\'s language preference.                          |
+string  No  User's age. string  No  User's gender. string  No  The user's 
 
-## Responses
+language preference. 
 
-Success (code: 1)
+string  No  External login 
 
-{  
-\"code\": \"1\",  
-\"next_appointment\": {  
-\"date_full_display\": \"Monday, 25 Aug 2024\",  
-\"date_display\": \"25 Aug 24\",  
-\"time_start_display\": \"10:00 am\",  
-\"time_end_display\": \"11:00 am\",  
-\"counsellor\": \"Jane Doe\"  
-},  
-\"tot\": {  
-\"daily_limit_message\": \"Words used: 150/500 today\"  
-},  
-\"next_slot\": {  
-\"counsellor\": \"John Smith\",  
-\"next_counsellor_slot\": \[  
-{  
-\"slot_id\": 1,  
-\"date\": \"2024-08-26\",  
-\"time_start\": \"09:00\",  
-\"time_end\": \"10:00\"  
-}  
-\]  
-},  
-\"tam_library_url\": \"http://example.com/library\",  
-\"tam_resource_center_url\": \"http://example.com/resources\"  
-}
+identifier. 
 
-Failure (code: 0)
+user\_guardian\_name  string user\_guardian\_phone  string user\_guardian\_relationship  string 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User id cannot be empty\"  
-}
+client\_ip\_address  string device\_id  string access\_code  string 
 
-# update_user_access_code
+No  Guardian name. No  Guardian phone. No  Guardian 
 
-File: api_update_user_access_code.php
+relationship. 
 
-Method: POST
+No  Client IP address. No  Device ID. 
 
-Description: Updates a user\'s access code and plan information.
+No  Access code. 
 
-## Parameters
+**Responses** 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                  |
-| access_code       | string | Yes      | The new access code.             |
-| user_lang         | string | No       | The user\'s language preference. |
+Success (response\_code: 1) 
 
-## Responses
+{ 
 
-Success (response_code: 1)
+`  `"response\_code": "1", 
 
-{  
-\"response_code\": \"1\",  
-\"message\": \"success\",  
-\"status\": \"success\",  
-\"data\": {  
-\"code\": \"1\",  
-\"message\": \"Access code updated successfully\"  
-}  
-}
+`  `"message": "success", 
+
+`  `"status": "success", 
+
+`  `"data": "", 
+
+`  `"show\_user\_usage\_policy": "" }
+
+Failure (response\_code: 0) 
+
+{ 
+
+`  `"response\_code": "0", 
 
-Failure (response_code: 0)
+`  `"message": "User Registration failed as Login Type field missing",   "status": "failure", 
 
-{  
-\"response_code\": \"0\",  
-\"message\": \"Error\",  
-\"status\": \"failure\",  
-\"data\": {  
-\"error\": \"Access code is invalid.\"  
-}  
+`  `"data": "", 
+
+`  `"show\_user\_usage\_policy": "" 
+
 }
 
-# update_user_information
+**delete\_user\_account** 
 
-File: api_update_user_information.php
+File: api\_delete\_user\_account.php Method: POST 
 
-Method: POST
+Description: Deletes a user's account and removes their session from the database. It requires a delete\_account flag and user/session details for validation. 
 
-Description: Updates a user\'s profile information, including name,
-email, phone, and guardian details.
+**Parameters** 
 
-## Parameters
+Name  Type delete\_account  bool 
 
-| Name                       | Type   | Required | Description                                     |
-|----------------------------|--------|----------|-------------------------------------------------|
-| primary_login_key          | string | Yes      | The user\'s primary login key (email or phone). |
-| user_reference_id          | int    | No       | The user\'s ID.                                 |
-| user_name                  | string | No       | User\'s name.                                   |
-| user_age                   | string | No       | User\'s age.                                    |
-| user_sex                   | string | No       | User\'s gender.                                 |
-| user_country               | string | No       | User country.                                   |
-| user_email                 | string | No       | User email.                                     |
-| user_phone                 | string | No       | User phone.                                     |
-| user_guardian_name         | string | No       | Guardian name.                                  |
-| user_guardian_email        | string | No       | Guardian email.                                 |
-| user_guardian_phone        | string | No       | Guardian phone.                                 |
-| user_guardian_relationship | string | No       | Guardian relationship.                          |
-| access_code                | string | No       | Access code.                                    |
-| employee_id                | string | No       | Employee ID.                                    |
-| user_lang                  | string | No       | Language preference.                            |
+user\_id  int session\_token  string user\_lang  string 
 
-## Responses
+Required  Description 
 
-Success (status: 1)
+Yes  A flag to confirm 
 
-{  
-\"status\": \"1\",  
-\"message\": \"success\",  
-\"data\": {  
-\"id\": \"123\",  
-\"name\": \"Updated Name\"  
-}  
-}
+account deletion. 
 
-Failure (status: -1)
+Yes  The ID of the user to 
 
-{  
-\"status\": \"-1\",  
-\"message\": \"Error updating user information\"  
-}
+be deleted. 
 
-# validate_referral_code
+Yes  The user's session 
 
-File: api_validate_referral_code.php
+token for validation. No  The user's language 
 
-Method: POST
+preference. 
 
-Description: Validates a referral code against a user\'s subscription
-and applies the corresponding discount if the code is valid.
+**Responses** 
 
-## Parameters
+Success (code: 1) 
 
-| Name                       | Type   | Required | Description                      |
-|----------------------------|--------|----------|----------------------------------|
-| user_reference_id          | int    | Yes      | The user\'s ID.                  |
-| referral_code              | string | Yes      | The referral code to validate.   |
-| subscription_category_code | string | Yes      | The plan\'s category code.       |
-| user_lang                  | string | No       | The user\'s language preference. |
+{ 
 
-## Responses
+`  `"code": 1, 
 
-Success (code: 1)
+`  `"message": "delete\_success" }
 
-{  
-\"code\": \"1\",  
-\"discount\": 10,  
-\"message\": \"success\"  
-}
+Failure (code: 0) 
 
-Failure (code: 0)
+{ 
 
-{  
-\"code\": \"0\",  
-\"discount\": \"\",  
-\"message\": \"error_code_inactive\"  
-}
+`  `"code": 0, 
 
-# audio_transcribe
+`  `"message": "generic\_error" }
 
-File: audio_transcribe.php
+**get\_current\_plan\_summary** 
 
-Method: POST
+File: api\_get\_current\_plan\_summary.php Method: POST 
 
-Description: Transcribes an audio file into text using a third-party
-service (Whisper API). It can also generate an audio response from the
-transcribed text.
+Description: Retrieves a summary of a user's current subscription plan, including details like plan type and end date. 
 
-## Parameters
+**Parameters** 
 
-| Name           | Type   | Required | Description                                                       |
-|----------------|--------|----------|-------------------------------------------------------------------|
-| file_url       | string | Yes      | The URL of the audio file.                                        |
-| generate_audio | string | Yes      | \"Y\" to generate audio, \"N\" otherwise.                         |
-| api_key        | string | Yes      | The API key for the transcription service.                        |
-| user_lang_code | string | No       | The user\'s language code.                                        |
-| user_gender    | string | No       | The user\'s gender (\'M\', \'F\', or \'O\') for voice generation. |
-| return_type    | string | No       | \"1\" to return audio only, otherwise returns text and audio.     |
+Name user\_reference\_id user\_email user\_key user\_lang 
 
-## Responses
+Type  Required int  No string  No string  No string  No 
 
-Success (code: 1)
+Description 
 
-{  
-\"code\": 1,  
-\"text\": \"This is the transcribed text.\",  
-\"language\": \"en\",  
-\"language_full\": \"English\",  
-\"audio\": \"http://example.com/audio/response.mp3\"  
-}
+The user's ID. The user's email. A user key. 
 
-Failure (code: 0)
+The user's language preference. 
 
-{  
-\"code\": 0,  
-\"text\": \"voice_note_missing\",  
-\"language\": \"not_detected\",  
-\"language_full\": \"not_detected\"  
-}
+client\_ip\_address  string  No **Responses** 
 
-# check_tam_connections_consent
+Success (response\_code: 1) 
 
-File: check_tam_connections_consent.php
+{ 
 
-Method: POST
+`  `"response\_code": 1, 
 
-Description: This API checks if a user has consented to the \"TAM
-Connections\" feature. It returns the consent message if consent is
-required.
+`  `"message": "success", 
 
-## Parameters
+`  `"status": "success", 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                  |
-| user_lang         | string | No       | The user\'s language preference. |
+`  `"data": { 
 
-## Responses
+`    `"end\_date": "2024-12-31 23:59:59",     "plan\_type": "Monthly Subscription",     "price\_paid": "499", 
 
-Consent Required (code: 0)
+`    `"status": "Active" 
 
-{  
-\"code\": \"0\",  
-\"message\": \"Consent is required\",  
-\"data\": {  
-\"title\": \"Consent Title\",  
-\"introduction_1\": \"Introduction 1\",  
-\"introduction_2\": \"Introduction 2\",  
-\"introduction_guidelines\": \"Guidelines\",  
-\"consent_line_1\": \"Consent Line 1\",  
-\"consent_line_2\": \"Consent Line 2\",  
-\"consent_line_3\": \"Consent Line 3 with {XXXX} replacement\",  
-\"consent_line_4\": \"Consent Line 4\",  
-\"consent_line_5\": \"Consent Line 5\",  
-\"consent_line_6\": \"Consent Line 6\",  
-\"consent_line_7\": \"Consent Line 7\",  
-\"consent_line_8\": \"\",  
-\"consent_line_9\": \"\",  
-\"consent_final\": \"Final consent text\",  
-\"consent_text\": \"Accept\",  
-\"cancel_text\": \"Decline\"  
-}  
+`  `} 
+
 }
+
+Failure (response\_code: 0) 
+
+{ 
+
+`  `"response\_code": 0, 
 
-Consent Granted (code: 1)
+`  `"message": "No active plan found",   "status": "failure", 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\"  
+`  `"data": {} 
+
 }
 
-# generate_chat_summary
+The user's IP address. 
 
-File: generate_chat_summary.php
+**get\_current\_share\_permissions** 
 
-Method: POST
+File: api\_get\_current\_share.php Method: POST 
 
-Description: Generates a summary for a specific chat session or for all
-sessions requiring a summary. This is intended to be used as a cron job
-or a background process.
+Description: Fetches the user's current sharing permissions for various app features, such as a journal and mood tracker. 
 
-## Parameters
+**Parameters** 
 
-| Name       | Type | Required | Description                           |
-|------------|------|----------|---------------------------------------|
-| session_id | int  | No       | The specific session ID to summarize. |
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. user\_lang  string  No  The user's language 
 
-## Responses
+preference. 
 
-Success
+**Responses** 
 
-{  
-\"close_summary\": \"The summary has been generated successfully.\"  
-}
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
 
-Error
+`  `"message": "settings\_loaded", 
 
-{  
-\"close_summary\": \"Error while generating the summary\"  
+`  `"data": { 
+
+`    `"journal\_shared": true, 
+
+`    `"mood\_tracker\_shared": false, 
+
+`    `"habit\_tracker\_shared": true, 
+
+`    `"anxiety\_tracker\_shared": false,     "assessments\_shared": true 
+
+`  `} 
+
 }
 
-# get_complete_ysam_post
+Failure (code: 0) 
 
-File: get_complete_ysam_post.php
+{ 
 
-Method: POST
+`  `"code": 0, 
 
-Description: Retrieves the full content of a single YSAM post, including
-details about its author and any related information.
+`  `"message": "user\_missing" }
 
-## Parameters
+**get\_random\_quote** 
 
-| Name              | Type   | Required | Description                             |
-|-------------------|--------|----------|-----------------------------------------|
-| user_reference_id | int    | Yes      | The ID of the user requesting the post. |
-| ysam_id           | int    | Yes      | The ID of the YSAM post to retrieve.    |
-| user_lang         | string | No       | The user\'s language preference.        |
+File: api\_get\_random\_quote.php 
 
-## Responses
+Method: POST 
 
-Success (code: 1)
+Description: Retrieves a random quote from the database. 
 
-{  
-\"code\": \"1\",  
-\"data\": {  
-\"ysam_id\": \"123\",  
-\"ysam_title\": \"My Story\",  
-\"ysam_body\": \"The full content of the post\...\",  
-\"author_name\": \"Jane Doe\",  
-\"category\": \"Anxiety\"  
-},  
-\"message\": \"\"  
-}
+**Parameters** 
 
-Failure (code: 0)
+Name user\_lang 
 
-{  
-\"code\": \"0\",  
-\"message\": \"technical_issue\"  
-}
+user\_reference\_id 
 
-# google_audio_transcribe
+Type  Required  Description string  No  The preferred 
 
-File: google_audio_transcribe.php
+language for the quote. 
 
-Method: POST
+string  No  The user's ID to 
 
-Description: Transcribes an audio file into text using Google Cloud
-Speech-to-Text.
+fetch personalized quotes. 
 
-## Parameters
+**Responses** 
 
-| Name            | Type   | Required | Description                       |
-|-----------------|--------|----------|-----------------------------------|
-| audio_file_path | string | Yes      | The local path to the audio file. |
-| user_lang       | string | No       | The user\'s language preference.  |
-| api_key         | string | Yes      | The Google Cloud API key.         |
+Success 
 
-## Responses
+{ 
 
-Success (code: 1)
+`  `"quote": "The only way to do great work is to love what you do.",   "author": "Steve Jobs" 
 
-{  
-\"code\": \"1\",  
-\"transcription\": \"This is the transcribed text.\"  
 }
 
-Failure (code: 0)
+Failure 
 
-{  
-\"code\": \"0\",  
-\"error\": \"Error processing audio file.\"  
-}
+{ 
 
-# list_tam_user_conversations_dashboard
+`  `"quote": "",   "author": "" }
 
-File: list_tam_user_conversations_dashboard.php
+**ignore\_merge\_account** 
 
-Method: POST
+File: api\_ignore\_merge\_account.php 
 
-Description: Retrieves a list of user conversations to display on a
-dashboard. It can be filtered by a search query.
+Method: POST 
 
-## Parameters
+Description: Ignores the flag to merge a user's accounts. 
 
-| Name              | Type   | Required | Description                             |
-|-------------------|--------|----------|-----------------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                         |
-| search            | string | No       | A search query to filter conversations. |
-| user_lang         | string | No       | The user\'s language preference.        |
+**Parameters** 
 
-## Responses
+Name  Type  Required  Description user\_id  string  Yes  The user's ID. 
 
-Success (code: 1)
+**Responses** 
 
-{  
-\"code\": \"1\",  
-\"message\": \"\",  
-\"data\": \[  
-{  
-\"conversation_id\": \"1\",  
-\"user_name\": \"User 1\",  
-\"last_message\": \"Hello, how are you?\",  
-\"timestamp\": \"2024-08-24 15:30:00\"  
-}  
-\]  
-}
+Success (status: success) 
 
-Failure (code: 0)
+{ 
 
-{  
-\"code\": \"0\",  
-\"message\": \"technical_issue\"  
-}
+`  `"status": "success", 
 
-# list_ysam_posts
+`  `"data": "Merge flag ignored for user" }
 
-File: list_ysam_posts.php
+Error (status: error) 
 
-Method: POST
+{ 
 
-Description: Fetches a list of \"Your Story and Mine\" (YSAM) posts
-based on various filters.
+`  `"status": "error", 
 
-## Parameters
+`  `"data": "Technical issue" }
 
-| Name            | Type    | Required | Description                             |
-|-----------------|---------|----------|-----------------------------------------|
-| page_number     | int     | No       | The page number for pagination.         |
-| posts_per_page  | int     | No       | The number of posts to return per page. |
-| ysam_user       | int     | No       | The user ID to filter posts by.         |
-| hashtag         | string  | No       | A hashtag to filter posts by.           |
-| category        | string  | No       | The category code to filter posts by.   |
-| search_criteria | string  | No       | A search term.                          |
-| published       | boolean | No       | Flag to filter for published posts.     |
-| only_count      | boolean | No       | Flag to only return the count of posts. |
-| user_id         | int     | No       | The current user\'s ID.                 |
-| user_lang       | string  | No       | The user\'s language preference.        |
+**initiate\_subscription\_payment** 
 
-## Responses
+File: api\_initiate\_subscription\_payment.php Method: POST 
 
-Success (code: 1)
+Description: Initiates a subscription payment process, validates the user and plan, creates a payment entry in the database, and returns the necessary data for a Razorpay payment gateway. 
 
-{  
-\"code\": \"1\",  
-\"message\": \"\",  
-\"data\": \[  
-{  
-\"ysam_id\": \"1\",  
-\"ysam_title\": \"First Post\",  
-\"ysam_body_snippet\": \"This is a snippet of the first post\...\",  
-\"author_name\": \"Author 1\",  
-\"created_at\": \"2024-08-24 15:00:00\"  
-}  
-\]  
-}
+**Parameters** 
 
-Failure (code: 0)
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. plan\_type  string  Yes  The plan's category 
 
-{  
-\"code\": 0,  
-\"count\": 0,  
-\"message\": \"processing_error\"  
-}
+code. 
 
-# register_tam_connections_consent
+subscription\_price  string  No  The subscription 
 
-File: register_tam_connections_consent.php
+price. subscription\_discount  int  No  The subscription 
 
-Method: POST
+discount 
 
-Description: Records a user\'s consent to participate in the \"TAM
-Connections\" feature, saving the consent message and other details to
-the database.
+percentage. 
 
-## Parameters
+referral\_code  string  No  A referral code to 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                  |
-| consent_string    | string | Yes      | The consent message string.      |
-| user_lang         | string | No       | The user\'s language preference. |
+apply a discount. 
 
-## Responses
+**Responses** 
 
-Success (code: 1)
+Success (code: 1) 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\"  
-}
+{ 
 
-Failure (code: 0)
+`  `"code": "1", 
 
-{  
-\"code\": \"0\",  
-\"message\": \"Error registering consent\"  
+`  `"razorpay\_json": "{"key":"...","amount":1000,"currency":"INR","name":"The Able Mind","description":"Monthly Plan","image":"...","prefill":{"name":"John Doe","email":"john.doe@example.com","contact":"9876543210"},"notes":{"m erchant\_order\_id":"...","category":"MONTHLY","payment\_gst\_fees":10,"pay ment\_price\_wo\_fees":100,"price\_id":123},"order\_id":"...","theme":{"colo r":"#5F9EA0"},"send\_sms\_hash":true,"method":{"netbanking":true,"card":t rue,"wallet":true,"upi":true,"emi":false,"pay later":false}}" 
+
 }
 
-# tam_connections_block_user
+Failure (code: 0) 
 
-File: tam_connections_block_user.php
+{ 
 
-Method: POST
+`  `"code": "0", 
 
-Description: Blocks another user from connecting or communicating with
-the current user.
+`  `"message": "Error initiating subscription." }
 
-## Parameters
+**send\_registration\_otp** 
 
-| Name                    | Type   | Required | Description                       |
-|-------------------------|--------|----------|-----------------------------------|
-| user_reference_id       | int    | Yes      | The current user\'s ID.           |
-| user_reference_block_id | int    | Yes      | The ID of the user to be blocked. |
-| user_lang               | string | No       | The user\'s language preference.  |
+File: api\_send\_registration\_otp.php Method: POST 
 
-## Responses
+Description: Generates a one-time password (OTP) and sends it to a user's email for registration purposes. 
 
-Success (code: 1)
+**Parameters** 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\"  
-}
+Name  Type  Required  Description user\_email  string  Yes  The user's email 
 
-Failure (code: 0)
+address. 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User Id is not specified\"  
-}
+user\_lang  string  No  The user's language 
 
-# tam_connections_send_message
+preference. 
 
-File: tam_connections_send_message.php
+**Responses** 
 
-Method: POST
+Success (code: 1) 
 
-Description: Sends a message from one user to another within the \"TAM
-Connections\" feature. It handles message validation, language
-detection, and translation.
+{ 
 
-## Parameters
+`  `"code": "1", 
 
-| Name                   | Type   | Required | Description                         |
-|------------------------|--------|----------|-------------------------------------|
-| user_reference_id      | int    | Yes      | The sender\'s user ID.              |
-| recipient_reference_id | int    | Yes      | The recipient\'s user ID.           |
-| message                | string | Yes      | The message content.                |
-| type                   | string | Yes      | Message type, e.g., \'T\' for text. |
-| user_lang              | string | No       | The user\'s language preference.    |
+`  `"message": "success" }
 
-## Responses
+Failure (code: 0) 
 
-Success (code: 1)
+{ 
 
-{  
-\"code\": 1,  
-\"text\": \"Hello, how are you?\",  
-\"detected_language\": \"en\",  
-\"special_message\": \"\",  
-\"sender_date_display\": \"24 Aug 2024 03:30 pm\",  
-\"recipient_text\": \"Hallo, wie geht es Ihnen?\",  
-\"receipient_date_display\": \"24 Aug 2024 03:30 pm\"  
-}
+`  `"code": "0", 
 
-Failure (code: 0)
+`  `"message": "Error sending OTP." }
 
-{  
-\"code\": \"0\",  
-\"text\": \"User not authorized\"  
-}
+**show\_plans** 
 
-# translate
+File: api\_show\_plans.php Method: POST 
 
-File: translate.php
+Description: Retrieves a list of available subscription plans for a user, taking into account their location and any special offers. 
 
-Method: POST
+**Parameters** 
 
-Description: Translates text from one language to another using the
-Google Translate API. It can also save the translated message to the
-database.
+Name  Type  Required user\_key  string  No user\_lang  string  No 
 
-## Parameters
+new  boolean  No 
 
-| Name              | Type   | Required | Description                                           |
-|-------------------|--------|----------|-------------------------------------------------------|
-| text_to_translate | string | Yes      | The text to be translated.                            |
-| target_language   | string | Yes      | The two-letter code for the target language.          |
-| message_id        | int    | No       | The ID of the message to update in the database.      |
-| from_counsellor   | bool   | No       | A flag indicating if the message is from a counselor. |
-| testing           | bool   | No       | A flag for testing purposes.                          |
+Description The user's key. 
 
-## Responses
+The user's language preference. 
 
-Success (code: 1)
+A flag to request a new JSON format. 
 
-{  
-\"code\": 1,  
-\"text\": \"Translated text here.\",  
-\"detected_language\": \"en\",  
-\"detected_language_full\": \"English\"  
-}
+**Responses** 
 
-Failure (code: 0)
+Success (code: 1) 
 
-{  
-\"code\": 0,  
-\"text\": \"Translation Error : The text to translate cannot be
-empty.\"  
-}
+{ 
 
-# upload_audio
+`  `"code": "1", 
 
-File: upload_audio.php
+`  `"message": "success", 
 
-Method: POST
+`  `"data": [ 
 
-Description: Handles the upload of an audio file, either from a file
-input or from a Base64-encoded string.
+`    `{ 
 
-## Parameters
+`      `"plan\_id": 1, 
 
-| Name          | Type   | Required    | Description                                                                                 |
-|---------------|--------|-------------|---------------------------------------------------------------------------------------------|
-| type          | string | Yes         | The upload type, \"R\" for recorded audio (Base64), or a different value for a file upload. |
-| recordedAudio | string | Conditional | Required if type is \'R\', the Base64-encoded audio data.                                   |
-| audioFile     | file   | Conditional | Required if type is not \'R\', the audio file to upload.                                    |
+`      `"plan\_name": "Monthly Plan", 
 
-## Responses
+`      `"price": "499", 
 
-Success (code: 1)
+`      `"currency": "INR", 
 
-{  
-\"code\": 1,  
-\"message\": \"File is successfully uploaded.\",  
-\"file\": \"/path/to/uploaded_file.wav\"  
-}
+`      `"features": ["Feature 1", "Feature 2"]     } 
 
-Failure (code: 0)
+`  `] 
 
-{  
-\"code\": 0,  
-\"message\": \"No audio file to upload.\",  
-\"file\": \"\"  
 }
 
-# user_conversations_load
+Failure (code: 0) 
 
-File: user_conversations_load.php
+{ 
 
-Method: POST
+`  `"code": "0", 
 
-Description: Loads a user\'s conversation history based on their
-connection type and room name.
+`  `"message": "error\_retrieving\_plans" }
 
-## Parameters
+**subscription\_payment\_confirmation** 
 
-| Name              | Type   | Required | Description                                                             |
-|-------------------|--------|----------|-------------------------------------------------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                                                         |
-| connection_type   | string | Yes      | The type of conversation, \'S\' for a single user or \'G\' for a group. |
-| room_name         | string | Yes      | The name of the conversation room.                                      |
-| user_lang         | string | No       | The user\'s language preference.                                        |
+File: api\_subscription\_payment\_confirmation.php Method: POST 
 
-## Responses
+Description: Confirms a payment made through the Razorpay gateway. It verifies the payment signature, updates the database records for the subscription and payment, and sends a confirmation email/notification to the user. 
 
-Success (code: 1)
+**Parameters** 
 
-{  
-\"code\": \"1\",  
-\"message\": \"\",  
-\"data\": {  
-\"room_name\": \"ysam_conv_123_456\",  
-\"chat_history\": \[  
-{  
-\"id\": \"1\",  
-\"sender_id\": \"123\",  
-\"message\": \"Hello!\",  
-\"timestamp\": \"2024-08-24 15:00:00\"  
-}  
-\]  
-}  
-}
+Name  Type  Required  Description razorpay\_order\_id  string  Yes  The order ID from 
 
-Failure (code: 0)
+Razorpay. 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User Id or Connection type is not specified\"  
-}
+razorpay\_payment\_id  string  Yes  The payment ID 
 
-# ysam_add_update_article
+from Razorpay. razorpay\_signature  string  Yes  The payment 
 
-File: ysam_add_update_article.php
+signature from 
 
-Method: POST
+Razorpay. 
 
-Description: Creates a new YSAM post or updates an existing one with a
-title, body, hashtags, and category.
+user\_lang  string  No  The user's language 
 
-## Parameters
+preference. 
 
-| Name              | Type   | Required    | Description                                                     |
-|-------------------|--------|-------------|-----------------------------------------------------------------|
-| ysam_update       | string | Yes         | \'Y\' to update an existing article, or \'N\' to add a new one. |
-| user_reference_id | int    | Yes         | The user\'s ID.                                                 |
-| ysam_id           | int    | Conditional | Required if updating, the ID of the post to update.             |
-| ysam_body         | string | Yes         | The main content of the post.                                   |
-| ysam_hashtags     | string | No          | A comma-separated list of hashtags.                             |
-| ysam_title        | string | Yes         | The title of the post.                                          |
-| ysam_user_name    | string | Yes         | The name of the user posting the article.                       |
-| ysam_category_id  | int    | Yes         | The category ID of the article.                                 |
-| ysam_narration    | string | No          | A narration for the article.                                    |
-| user_lang         | string | No          | The user\'s language preference.                                |
+**Responses** 
 
-## Responses
+Success (code: 1) 
 
-Success (code: 1)
+{ 
 
-{  
-\"code\": \"1\",  
-\"text\": \"success\"  
-}
+`  `"code": "1", 
 
-Failure (code: 0)
+`  `"message": "plan\_confirmation" }
 
-{  
-\"code\": \"0\",  
-\"text\": \"User Id not specified.\"  
-}
+Failure (code: 0) 
 
-# ysam_check_usage_tam_connections
+{ 
 
-File: ysam_check_usage_tam_connections.php
+`  `"code": "0", 
 
-Method: POST
+`  `"message": "payment\_failed" }
 
-Description: Checks if a user has exceeded their daily message limit for
-\"TAM Connections\".
+**tam\_connections\_consent** 
 
-## Parameters
+File: api\_tam\_connections\_consent\_status.php Method: POST 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                  |
-| user_lang         | string | No       | The user\'s language preference. |
+Description: This API checks if a user has consented to the "TAM Connections" feature. It returns the consent message if consent is required. 
 
-## Responses
+**Parameters** 
 
-Within Limit (code: 1)
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. user\_lang  string  No  The user's language 
 
-{  
-\"code\": \"1\",  
-\"message\": \"You have 5 messages remaining for today.\"  
-}
+preference. 
 
-Limit Exceeded (code: 0)
+**Responses** 
 
-{  
-\"code\": \"0\",  
-\"message\": \"Message limit exceeded. Please try again tomorrow.\"  
-}
+Consent Required (code: 0) 
 
-# ysam_connect_to_user
+{ 
 
-File: ysam_connect_to_user.php
+`  `"code": "0", 
 
-Method: POST
+`  `"text": { 
 
-Description: Updates the connection status between two users within the
-YSAM feature.
+`    `"title": "Consent Title", 
 
-## Parameters
+`    `"introduction\_1": "Introduction 1", 
 
-| Name                | Type   | Required | Description                         |
-|---------------------|--------|----------|-------------------------------------|
-| user_reference_id   | int    | Yes      | The current user\'s ID.             |
-| author_reference_id | int    | Yes      | The ID of the user to connect with. |
-| user_lang           | string | No       | The user\'s language preference.    |
+`    `"introduction\_2": "Introduction 2", 
 
-## Responses
+`    `"introduction\_guidelines": "Guidelines", 
 
-Success (code: 1)
+`    `"consent\_line\_1": "Consent Line 1", 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\"  
-}
+`    `"consent\_line\_2": "Consent Line 2", 
 
-Failure (code: 0)
+`    `"consent\_line\_3": "Consent Line 3 with {XXXX} replacement",     "consent\_line\_4": "Consent Line 4", 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User Id or Author Id not specified\"  
-}
+`    `"consent\_line\_5": "Consent Line 5", 
 
-# ysam_follow_user
+`    `"consent\_line\_6": "Consent Line 6", 
 
-File: ysam_follow_user.php
+`    `"consent\_line\_7": "Consent Line 7", 
 
-Method: POST
+`    `"consent\_line\_8": "", 
 
-Description: Allows a user to follow or unfollow another user in the
-YSAM section.
+`    `"consent\_line\_9": "", 
 
-## Parameters
+`    `"consent\_final": "Final consent text", 
 
-| Name              | Type   | Required | Description                                            |
-|-------------------|--------|----------|--------------------------------------------------------|
-| user_reference_id | int    | Yes      | The current user\'s ID.                                |
-| user_to_follow    | int    | Yes      | The ID of the user to follow/unfollow.                 |
-| follow            | string | No       | \'Y\' to follow, \'N\' to unfollow. Defaults to \'Y\'. |
+`    `"consent\_text": "Accept", 
 
-## Responses
+`    `"cancel\_text": "Decline" 
 
-Success (code: 1)
+`  `} 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\"  
 }
 
-Failure (code: 0)
+Consent Granted (code: 1) 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User Id not specified\"  
-}
+{ 
 
-# ysam_get_all_categories
+`  `"code": "1" }
 
-File: ysam_get_all_categories.php
+**third\_banner** 
 
-Method: POST
+File: api\_third\_banner.php Method: POST 
 
-Description: Retrieves a list of all available YSAM post categories.
+Description: Retrieves information for a third banner, including details on next appointments, Therapy Over Text (TOT) usage, and available counselor slots. 
 
-## Parameters
+**Parameters** 
 
-| Name      | Type   | Required | Description                      |
-|-----------|--------|----------|----------------------------------|
-| user_lang | string | No       | The user\'s language preference. |
+Name user\_reference\_id slots 
 
-## Responses
+user\_lang 
 
-Success (code: 1)
+Type  Required  Description 
 
-{  
-\"code\": \"1\",  
-\"message\": \"\",  
-\"data\": \[  
-{  
-\"category_id\": \"1\",  
-\"category_name\": \"Anxiety\",  
-\"category_code\": \"anx\"  
-}  
-\]  
-}
+int  Yes  The user's ID. 
 
-Failure (code: 0)
+int  No  The number of 
 
-{  
-\"code\": \"0\",  
-\"message\": \"technical_issue\"  
-}
+counselor slots to retrieve. Defaults to 2. 
 
-# ysam_initialize_form
+string  No  The user's language 
 
-File: ysam_initialize_form.php
+preference. 
 
-Method: POST
+**Responses** 
 
-Description: Retrieves data required to initialize the YSAM post
-creation form.
+Success (code: 1) 
 
-## Parameters
+{ 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                  |
-| user_lang         | string | No       | The user\'s language preference. |
+`  `"code": "1", 
 
-## Responses
+`  `"next\_appointment": { 
 
-Success (code: 1)
+`    `"date\_full\_display": "Monday, 25 Aug 2024", 
 
-{  
-\"code\": \"1\",  
-\"message\": \"\",  
-\"data\": {  
-\"user_name\": \"Jane Doe\",  
-\"user_picture\": \"http://example.com/profile.jpg\",  
-\"categories\": \[  
-{  
-\"category_id\": \"1\",  
-\"category_name\": \"Anxiety\"  
-}  
-\]  
-}  
-}
+`    `"date\_display": "25 Aug 24", 
 
-Failure (code: 0)
+`    `"time\_start\_display": "10:00 am", 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User Id not specified\"  
-}
+`    `"time\_end\_display": "11:00 am", 
 
-# ysam_report_user_post
+`    `"counsellor": "Jane Doe" 
 
-File: ysam_report_user_post.php
+`  `}, 
 
-Method: POST
+`  `"tot": { 
 
-Description: Allows a user to report a YSAM post for inappropriate
-content or other reasons.
+`    `"daily\_limit\_message": "Words used: 150/500 today"   }, 
 
-## Parameters
+`  `"next\_slot": { 
 
-| Name              | Type   | Required | Description                                                       |
-|-------------------|--------|----------|-------------------------------------------------------------------|
-| user_reference_id | int    | Yes      | The user\'s ID.                                                   |
-| ysam_id           | int    | Yes      | The ID of the post to report.                                     |
-| previous_reported | string | No       | \'Y\' if previously reported, \'N\' otherwise. Defaults to \'N\'. |
-| reason            | string | Yes      | The reason for reporting the post.                                |
-| user_lang         | string | No       | The user\'s language preference.                                  |
+`    `"counsellor": "John Smith", 
 
-## Responses
+`    `"next\_counsellor\_slot": [ 
 
-Success (code: 1)
+`      `{ 
 
-{  
-\"code\": \"1\",  
-\"message\": \"success\"  
-}
+`        `"slot\_id": 1, 
 
-Failure (code: 0)
+`        `"date": "2024-08-26", 
 
-{  
-\"code\": \"0\",  
-\"message\": \"User Id not specified\"  
-}
+`        `"time\_start": "09:00", 
 
-# ysam_review_message
+`        `"time\_end": "10:00" 
 
-File: ysam_review_message.php
+`      `} 
 
-Method: POST
+`    `] 
 
-Description: Reviews the content of a message for inappropriate or
-harmful content using an external AI service before it is sent.
+`  `}, 
 
-## Parameters
+`  `"tam\_library\_url": "http://example.com/library", 
 
-| Name              | Type   | Required | Description                      |
-|-------------------|--------|----------|----------------------------------|
-| text_to_translate | string | Yes      | The message to be reviewed.      |
-| user_lang         | string | No       | The user\'s language preference. |
+`  `"tam\_resource\_center\_url": "http://example.com/resources" }
 
-## Responses
+Failure (code: 0) 
 
-Success (code: 1)
+{ 
 
-{  
-\"code\": 1,  
-\"detected_language\": \"en\",  
-\"link\": \"\",  
-\"timestamp\": \"2024-08-24 15:00:00\"  
-}
+`  `"code": "0", 
 
-Failure (code: 0)
+`  `"message": "User id cannot be empty" }
 
-{  
-\"code\": 0,  
-\"text\": \"The message has been flagged as inappropriate.\",  
-\"timestamp\": \"Sat, 24 Aug 2024 (03:00 pm)\"  
-}
+**update\_user\_access\_code** 
+
+File: api\_update\_user\_access\_code.php 
 
-# ysam_translate
+Method: POST 
 
-File: ysam_translate.php
+Description: Updates a user's access code and plan information. 
 
-Method: POST
+**Parameters** 
 
-Description: Translates a message from a user in the YSAM feature,
-handling language detection and providing a translated message for the
-recipient.
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. access\_code  string  Yes  The new access 
 
-## Parameters
+code. 
 
-| Name          | Type   | Required | Description                      |
-|---------------|--------|----------|----------------------------------|
-| message       | string | Yes      | The message to translate.        |
-| sender        | int    | Yes      | The sender\'s ID.                |
-| recipient     | int    | Yes      | The recipient\'s ID.             |
-| user_lang     | string | No       | The user\'s language preference. |
-| user_timezone | string | No       | The user\'s timezone.            |
+user\_lang  string  No  The user's language 
 
-## Responses
+preference. 
 
-Success (code: 1)
+**Responses** 
 
-{  
-\"code\": 1,  
-\"text\": \"Translated message text\",  
-\"detected_language\": \"en\",  
-\"detected_language_full\": \"English\",  
-\"timestamp_display\": \"Sat, 24 Aug 2024 (03:00 pm)\"  
+Success (response\_code: 1) 
+
+{ 
+
+`  `"response\_code": "1", 
+
+`  `"message": "success", 
+
+`  `"status": "success", 
+
+`  `"data": { 
+
+`    `"code": "1", 
+
+`    `"message": "Access code updated successfully"   } 
+
 }
 
-Failure (code: 0)
+Failure (response\_code: 0) 
 
-{  
-\"code\": 0,  
-\"text\": \"Error : Could not detect language\",  
-\"timestamp_display\": \"Sat, 24 Aug 2024 (03:00 pm)\"  
+{ 
+
+`  `"response\_code": "0", 
+
+`  `"message": "Error", 
+
+`  `"status": "failure", 
+
+`  `"data": { 
+
+`    `"error": "Access code is invalid."   } 
+
 }
+
+**update\_user\_information** 
+
+File: api\_update\_user\_information.php Method: POST 
 
-# share_private_app_data
+Description: Updates a user's profile information, including name, email, phone, and guardian details. 
 
-File: api_share_with_counsellor.php
+**Parameters** 
 
-Method: POST
+Name  Type  Required  Description primary\_login\_key  string  Yes  The user's primary 
 
-Description: Updates the user\'s sharing permissions for private app
-features. The endpoint securely updates the database with the user\'s
-preferences.
+login key (email or phone). 
 
-## Parameters
+user\_reference\_id  int user\_name  string user\_age  string user\_sex  string user\_country  string user\_email  string user\_phone  string user\_guardian\_name  string user\_guardian\_email  string user\_guardian\_phone  string user\_guardian\_relationship  string 
 
-| Name                   | Type   | Required | Description                                  |
-|------------------------|--------|----------|----------------------------------------------|
-| user_reference_id      | int    | Yes      | The user\'s ID.                              |
-| user_lang              | string | No       | The user\'s language preference.             |
-| journal_shared         | int    | No       | 1 to share the journal, 0 otherwise.         |
-| mood_tracker_shared    | int    | No       | 1 to share the mood tracker, 0 otherwise.    |
-| habit_tracker_shared   | int    | No       | 1 to share the habit tracker, 0 otherwise.   |
-| anxiety_tracker_shared | int    | No       | 1 to share the anxiety tracker, 0 otherwise. |
-| assessments_shared     | int    | No       | 1 to share the assessments, 0 otherwise.     |
+access\_code  string employee\_id  string user\_lang  string 
 
-## Responses
+No  The user's ID. No  User's name. 
 
-Success (code: 1)
+No  User's age. 
 
-{  
-\"code\": 1,  
-\"message\": \"settings_updated\"  
+No  User's gender. No  User country. No  User email. 
+
+No  User phone. 
+
+No  Guardian name. No  Guardian email. No  Guardian phone. No  Guardian 
+
+relationship. 
+
+No  Access code. No  Employee ID. No  Language 
+
+preference. 
+
+**Responses** 
+
+Success (status: 1) 
+
+{ 
+
+`  `"status": "1", 
+
+`  `"message": "success", 
+
+`  `"data": { 
+
+`    `"id": "123", 
+
+`    `"name": "Updated Name"   } 
+
 }
+
+Failure (status: -1) 
+
+{ 
+
+`  `"status": "-1", 
+
+`  `"message": "Error updating user information" }
+
+**validate\_referral\_code** 
+
+File: api\_validate\_referral\_code.php Method: POST 
+
+Description: Validates a referral code against a user's subscription and applies the corresponding discount if the code is valid. 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. referral\_code  string  Yes  The referral code 
+
+to validate. 
+
+subscription\_category\_code  string  Yes  The plan's category 
+
+code. 
+
+user\_lang  string  No  The user's 
+
+language preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"discount": 10, 
+
+`  `"message": "success" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"discount": "", 
+
+`  `"message": "error\_code\_inactive" }
+
+**audio\_transcribe** 
+
+File: audio\_transcribe.php Method: POST 
+
+Description: Transcribes an audio file into text using a third-party service (Whisper API). It can also generate an audio response from the transcribed text. 
+
+**Parameters** 
+
+Name  Type file\_url  string 
+
+generate\_audio  string api\_key  string 
+
+user\_lang\_code  string user\_gender  string 
+
+return\_type  string 
+
+Required  Description Yes  The URL of the 
 
-Failure (code: 0)
+audio file. 
 
-{  
-\"code\": 0,  
-\"message\": \"user_missing\"  
+Yes  "Y" to generate 
+
+audio, "N" otherwise. 
+
+Yes  The API key for the 
+
+transcription service. 
+
+No  The user's language 
+
+code. 
+
+No  The user's gender 
+
+('M', 'F', or 'O') for voice generation. 
+
+No  "1" to return audio 
+
+only, otherwise returns text and audio. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
+
+`  `"text": "This is the transcribed text.", 
+
+`  `"language": "en", 
+
+`  `"language\_full": "English", 
+
+`  `"audio": "http://example.com/audio/response.mp3" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": 0, 
+
+`  `"text": "voice\_note\_missing",   "language": "not\_detected", 
+
+`  `"language\_full": "not\_detected" }
+
+
+**check\_tam\_connections\_consent** 
+
+File: check\_tam\_connections\_consent.php Method: POST 
+
+Description: This API checks if a user has consented to the "TAM Connections" feature. It returns the consent message if consent is required. 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. user\_lang  string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Consent Required (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "Consent is required", 
+
+`  `"data": { 
+
+`    `"title": "Consent Title", 
+
+`    `"introduction\_1": "Introduction 1", 
+
+`    `"introduction\_2": "Introduction 2", 
+
+`    `"introduction\_guidelines": "Guidelines", 
+
+`    `"consent\_line\_1": "Consent Line 1", 
+
+`    `"consent\_line\_2": "Consent Line 2", 
+
+`    `"consent\_line\_3": "Consent Line 3 with {XXXX} replacement",     "consent\_line\_4": "Consent Line 4", 
+
+`    `"consent\_line\_5": "Consent Line 5", 
+
+`    `"consent\_line\_6": "Consent Line 6", 
+
+`    `"consent\_line\_7": "Consent Line 7", 
+
+`    `"consent\_line\_8": "", 
+
+`    `"consent\_line\_9": "", 
+
+`    `"consent\_final": "Final consent text", 
+
+`    `"consent\_text": "Accept", 
+
+`    `"cancel\_text": "Decline" 
+
+`  `} 
+
 }
+
+Consent Granted (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "success" }
+
+**generate\_chat\_summary** 
+
+File: generate\_chat\_summary.php Method: POST 
+
+Description: Generates a summary for a specific chat session or for all sessions requiring a summary. This is intended to be used as a cron job or a background process. 
+
+**Parameters** 
+
+Name  Type  Required  Description session\_id  int  No  The specific session 
+
+ID to summarize. 
+
+**Responses** 
+
+Success 
+
+{ 
+
+`  `"close\_summary": "The summary has been generated successfully." }
+
+Error 
+
+{ 
+
+`  `"close\_summary": "Error while generating the summary" }
+
+**get\_complete\_ysam\_post** 
+
+File: get\_complete\_ysam\_post.php Method: POST 
+
+Description: Retrieves the full content of a single YSAM post, including details about its author and any related information. 
+
+**Parameters** 
+
+Name user\_reference\_id 
+
+ysam\_id user\_lang 
+
+Type  Required  Description 
+
+int  Yes  The ID of the user 
+
+requesting the post. 
+
+int  Yes  The ID of the YSAM 
+
+post to retrieve. string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"data": { 
+
+`    `"ysam\_id": "123", 
+
+`    `"ysam\_title": "My Story", 
+
+`    `"ysam\_body": "The full content of the post...",     "author\_name": "Jane Doe", 
+
+`    `"category": "Anxiety" 
+
+`  `}, 
+
+`  `"message": "" 
+
+}
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "technical\_issue" }
+
+**google\_audio\_transcribe** 
+
+File: google\_audio\_transcribe.php 
+
+Method: POST 
+
+Description: Transcribes an audio file into text using Google Cloud Speech-to-Text. 
+
+**Parameters** 
+
+Name audio\_file\_path 
+
+user\_lang api\_key 
+
+Type  Required string  Yes 
+
+string  No string  Yes 
+
+Description 
+
+The local path to the audio file. 
+
+The user's language preference. 
+
+The Google Cloud API key. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"transcription": "This is the transcribed text." }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"error": "Error processing audio file." }
+
+**list\_tam\_user\_conversations\_dashboard** 
+
+File: list\_tam\_user\_conversations\_dashboard.php Method: POST 
+
+Description: Retrieves a list of user conversations to display on a dashboard. It can be filtered by a search query. 
+
+**Parameters** 
+
+Name user\_reference\_id search 
+
+user\_lang 
+
+Type  Required int  Yes string  No 
+
+string  No 
+
+Description The user's ID. 
+
+A search query to filter conversations. 
+
+The user's language preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "", 
+
+`  `"data": [ 
+
+`    `{ 
+
+`      `"conversation\_id": "1", 
+
+`      `"user\_name": "User 1", 
+
+`      `"last\_message": "Hello, how are you?",       "timestamp": "2024-08-24 15:30:00" 
+
+`    `} 
+
+`  `] 
+
+}
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "technical\_issue" }
+
+**list\_ysam\_posts** 
+
+File: list\_ysam\_posts.php 
+
+Method: POST 
+
+Description: Fetches a list of "Your Story and Mine" (YSAM) posts based on various filters. 
+
+**Parameters** 
+
+Name page\_number 
+
+posts\_per\_page ysam\_user hashtag category 
+
+search\_criteria published 
+
+only\_count user\_id user\_lang 
+
+Type  Required  Description 
+
+int  No  The page number 
+
+for pagination. 
+
+int  No  The number of posts 
+
+to return per page. int  No  The user ID to filter 
+
+posts by. 
+
+string  No  A hashtag to filter 
+
+posts by. 
+
+string  No  The category code 
+
+to filter posts by. 
+
+string  No  A search term. boolean  No  Flag to filter for 
+
+published posts. 
+
+boolean  No  Flag to only return 
+
+the count of posts. int  No  The current user's 
+
+ID. 
+
+string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1",   "message": "",   "data": [ 
+
+`    `{ 
+
+`      `"ysam\_id": "1", 
+
+`      `"ysam\_title": "First Post", 
+
+`      `"ysam\_body\_snippet": "This is a snippet of the first post...",       "author\_name": "Author 1", 
+
+`      `"created\_at": "2024-08-24 15:00:00" 
+
+`    `} 
+
+`  `] 
+
+}
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": 0, 
+
+`  `"count": 0, 
+
+`  `"message": "processing\_error" }
+
+**register\_tam\_connections\_consent** 
+
+File: register\_tam\_connections\_consent.php Method: POST 
+
+Description: Records a user's consent to participate in the "TAM Connections" feature, saving the consent message and other details to the database. 
+
+**Parameters** 
+
+Name user\_reference\_id consent\_string 
+
+user\_lang 
+
+Type  Required int  Yes string  Yes 
+
+string  No 
+
+Description The user's ID. 
+
+The consent message string. 
+
+The user's language preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "success" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "Error registering consent" }
+
+**tam\_connections\_block\_user** 
+
+File: tam\_connections\_block\_user.php 
+
+Method: POST 
+
+Description: Blocks another user from connecting or communicating with the current user. 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_reference\_id  int  Yes  The current user's 
+
+ID. 
+
+user\_reference\_block\_id  int  Yes  The ID of the user to 
+
+be blocked. user\_lang  string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "success" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "User Id is not specified" }
+
+**tam\_connections\_send\_message** 
+
+File: tam\_connections\_send\_message.php Method: POST 
+
+Description: Sends a message from one user to another within the "TAM Connections" feature. It handles message validation, language detection, and translation. 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_reference\_id  int  Yes  The sender's user 
+
+ID. 
+
+recipient\_reference\_id  int message  string type  string user\_lang  string 
+
+Yes  The recipient's user 
+
+ID. 
+
+Yes  The message 
+
+content. 
+
+Yes  Message type, e.g., 
+
+'T' for text. 
+
+No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
+
+`  `"text": "Hello, how are you?", 
+
+`  `"detected\_language": "en", 
+
+`  `"special\_message": "", 
+
+`  `"sender\_date\_display": "24 Aug 2024 03:30 pm", 
+
+`  `"recipient\_text": "Hallo, wie geht es Ihnen?", 
+
+`  `"receipient\_date\_display": "24 Aug 2024 03:30 pm" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"text": "User not authorized" }
+
+**translate** 
+
+File: translate.php Method: POST 
+
+Description: Translates text from one language to another using the Google Translate API. It can also save the translated message to the database. 
+
+**Parameters** 
+
+}
+
+Name text\_to\_translate 
+
+target\_language message\_id from\_counsellor testing 
+
+Type  Required string  Yes 
+
+string  Yes int  No bool  No bool  No 
+
+Description 
+
+The text to be translated. 
+
+The two-letter code for the target language. 
+
+The ID of the message to update in the database. 
+
+A flag indicating if the message is from a counselor. 
+
+A flag for testing purposes. 
+
+}
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
+
+`  `"text": "Translated text here.", 
+
+`  `"detected\_language": "en", 
+
+`  `"detected\_language\_full": "English" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": 0, 
+
+`  `"text": "Translation Error : The text to translate cannot be empty." 
+
+}
+
+**upload\_audio** 
+
+File: upload\_audio.php Method: POST 
+
+Description: Handles the upload of an audio file, either from a file input or from a Base64- encoded string. 
+
+**Parameters** 
+
+
+Name  Type type  string 
+
+recordedAudio  string audioFile  file 
+
+Required  Description 
+
+Yes  The upload type, "R" 
+
+for recorded audio (Base64), or a different value for a file upload. 
+
+Conditional  Required if type is 
+
+'R', the Base64-
+
+encoded audio data. Conditional  Required if type is 
+
+not 'R', the audio file 
+
+to upload. 
+
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
+
+`  `"message": "File is successfully uploaded.",   "file": "/path/to/uploaded\_file.wav" 
+
+}
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": 0, 
+
+`  `"message": "No audio file to upload.",   "file": "" 
+
+}
+
+
+**user\_conversations\_load** 
+
+File: user\_conversations\_load.php Method: POST 
+
+Description: Loads a user's conversation history based on their connection type and room name. 
+
+**Parameters** 
+
+Name user\_reference\_id connection\_type 
+
+room\_name user\_lang 
+
+Type  Required  Description 
+
+int  Yes  The user's ID. string  Yes  The type of 
+
+conversation, 'S' for a single user or 'G' for a group. 
+
+string  Yes  The name of the 
+
+conversation room. string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "", 
+
+`  `"data": { 
+
+`    `"room\_name": "ysam\_conv\_123\_456", 
+
+`    `"chat\_history": [ 
+
+`      `{ 
+
+`        `"id": "1", 
+
+`        `"sender\_id": "123", 
+
+`        `"message": "Hello!", 
+
+`        `"timestamp": "2024-08-24 15:00:00"       } 
+
+`    `] 
+
+`  `} 
+
+}
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "User Id or Connection type is not specified" }
+
+**ysam\_add\_update\_article** 
+
+File: ysam\_add\_update\_article.php Method: POST 
+
+Description: Creates a new YSAM post or updates an existing one with a title, body, hashtags, and category. 
+
+**Parameters** 
+
+Name ysam\_update 
+
+user\_reference\_id ysam\_id 
+
+ysam\_body ysam\_hashtags 
+
+ysam\_title ysam\_user\_name 
+
+ysam\_category\_id ysam\_narration user\_lang 
+
+Type  Required  Description 
+
+string  Yes  'Y' to update an 
+
+existing article, or 'N' to add a new one. 
+
+int  Yes  The user's ID. 
+
+int  Conditional  Required if 
+
+updating, the ID of the post to update. 
+
+string  Yes  The main content of 
+
+the post. 
+
+string  No  A comma-separated 
+
+list of hashtags. 
+
+string  Yes  The title of the post. string  Yes  The name of the 
+
+user posting the article. 
+
+int  Yes  The category ID of 
+
+the article. 
+
+string  No  A narration for the 
+
+article. 
+
+string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"text": "success" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"text": "User Id not specified." }
+
+**ysam\_check\_usage\_tam\_connections** 
+
+File: ysam\_check\_usage\_tam\_connections.php 
+
+Method: POST 
+
+Description: Checks if a user has exceeded their daily message limit for "TAM Connections". 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. user\_lang  string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Within Limit (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "You have 5 messages remaining for today." }
+
+Limit Exceeded (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "Message limit exceeded. Please try again tomorrow." }
+
+**ysam\_connect\_to\_user** 
+
+File: ysam\_connect\_to\_user.php 
+
+Method: POST 
+
+Description: Updates the connection status between two users within the YSAM feature. 
+
+**Parameters** 
+
+Name user\_reference\_id 
+
+author\_reference\_id user\_lang 
+
+Type  Required  Description 
+
+int  Yes  The current user's 
+
+ID. 
+
+int  Yes  The ID of the user to 
+
+connect with. 
+
+string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "success" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "User Id or Author Id not specified" }
+
+**ysam\_follow\_user** 
+
+File: ysam\_follow\_user.php 
+
+Method: POST 
+
+Description: Allows a user to follow or unfollow another user in the YSAM section. 
+
+**Parameters** 
+
+Name user\_reference\_id 
+
+user\_to\_follow follow 
+
+Type  Required  Description 
+
+int  Yes  The current user's 
+
+ID. 
+
+int  Yes  The ID of the user to 
+
+follow/unfollow. string  No  'Y' to follow, 'N' to 
+
+unfollow. Defaults 
+
+to 'Y'. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "success" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "User Id not specified" }
+
+**ysam\_get\_all\_categories** 
+
+File: ysam\_get\_all\_categories.php 
+
+Method: POST 
+
+Description: Retrieves a list of all available YSAM post categories. 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_lang  string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "", 
+
+`  `"data": [ 
+
+`    `{ 
+
+`      `"category\_id": "1", 
+
+`      `"category\_name": "Anxiety",       "category\_code": "anx" 
+
+`    `} 
+
+`  `] 
+
+}
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "technical\_issue" }
+
+**ysam\_initialize\_form** 
+
+File: ysam\_initialize\_form.php 
+
+Method: POST 
+
+Description: Retrieves data required to initialize the YSAM post creation form. 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. user\_lang  string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "", 
+
+`  `"data": { 
+
+`    `"user\_name": "Jane Doe", 
+
+`    `"user\_picture": "http://example.com/profile.jpg",     "categories": [ 
+
+`      `{ 
+
+`        `"category\_id": "1", 
+
+`        `"category\_name": "Anxiety" 
+
+`      `} 
+
+`    `] 
+
+`  `} 
+
+}
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "User Id not specified" }
+
+**ysam\_report\_user\_post** 
+
+File: ysam\_report\_user\_post.php Method: POST 
+
+Description: Allows a user to report a YSAM post for inappropriate content or other reasons. 
+
+**Parameters** 
+
+Name user\_reference\_id ysam\_id 
+
+previous\_reported 
+
+reason user\_lang 
+
+Type  Required  Description 
+
+int  Yes  The user's ID. 
+
+int  Yes  The ID of the post to 
+
+report. 
+
+string  No  'Y' if previously 
+
+reported, 'N' otherwise. Defaults to 'N'. 
+
+string  Yes  The reason for 
+
+reporting the post. string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": "1", 
+
+`  `"message": "success" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": "0", 
+
+`  `"message": "User Id not specified" }
+
+**ysam\_review\_message** 
+
+File: ysam\_review\_message.php Method: POST 
+
+Description: Reviews the content of a message for inappropriate or harmful content using an external AI service before it is sent. 
+
+**Parameters** 
+
+Name  Type  Required  Description text\_to\_translate  string  Yes  The message to be 
+
+reviewed. 
+
+user\_lang  string  No  The user's language 
+
+preference. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
+
+`  `"detected\_language": "en", 
+
+`  `"link": "", 
+
+`  `"timestamp": "2024-08-24 15:00:00" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": 0, 
+
+`  `"text": "The message has been flagged as inappropriate.",   "timestamp": "Sat, 24 Aug 2024 (03:00 pm)" 
+
+}
+
+**ysam\_translate** 
+
+File: ysam\_translate.php Method: POST 
+
+Description: Translates a message from a user in the YSAM feature, handling language detection and providing a translated message for the recipient. 
+
+**Parameters** 
+
+Name  Type message  string 
+
+sender  int recipient  int user\_lang  string 
+
+user\_timezone  string 
+
+Required  Description Yes  The message to 
+
+translate. 
+
+Yes  The sender's ID. Yes  The recipient's ID. No  The user's language 
+
+preference. 
+
+No  The user's timezone. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
+
+`  `"text": "Translated message text", 
+
+`  `"detected\_language": "en", 
+
+`  `"detected\_language\_full": "English", 
+
+`  `"timestamp\_display": "Sat, 24 Aug 2024 (03:00 pm)" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": 0, 
+
+`  `"text": "Error : Could not detect language", 
+
+`  `"timestamp\_display": "Sat, 24 Aug 2024 (03:00 pm)" }
+
+**share\_private\_app\_data** 
+
+File: api\_share\_with\_counsellor.php Method: POST 
+
+Description: Updates the user's sharing permissions for private app features. The endpoint securely updates the database with the user's preferences. 
+
+**Parameters** 
+
+Name  Type  Required  Description user\_reference\_id  int  Yes  The user's ID. user\_lang  string  No  The user's language 
+
+preference. 
+
+journal\_shared  int mood\_tracker\_shared  int habit\_tracker\_shared  int anxiety\_tracker\_shared  int 
+
+assessments\_shared  int 
+
+No  1 to share the 
+
+journal, 0 otherwise. No  1 to share the mood 
+
+tracker, 0 otherwise. No  1 to share the habit 
+
+tracker, 0 otherwise. 
+
+No  1 to share the 
+
+anxiety tracker, 0 otherwise. 
+
+No  1 to share the 
+
+assessments, 0 otherwise. 
+
+**Responses** 
+
+Success (code: 1) 
+
+{ 
+
+`  `"code": 1, 
+
+`  `"message": "settings\_updated" }
+
+Failure (code: 0) 
+
+{ 
+
+`  `"code": 0, 
+
+`  `"message": "user\_missing" }
