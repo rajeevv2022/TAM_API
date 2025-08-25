@@ -1,4 +1,4 @@
-# TAM API Documentation
+# Tthe Able Mind API Documentation
 This document provides structured documentation for the available APIs.
 Each API includes details such as purpose, request structure, parameters, authentication, and example JSON responses.
 
