@@ -3,7 +3,7 @@ This document provides structured documentation for the available APIs.
 Each API includes details such as purpose, request structure, parameters, authentication, and example JSON responses.
 
 ## Base URL
-<https://localhost/api.php/v1/>
+<https://<domain>/api.php/v1/>
 
 ## Authentication
 All API endpoints require Bearer Token authentication.
