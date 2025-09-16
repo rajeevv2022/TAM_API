@@ -1,4 +1,4 @@
-# Tthe Able Mind API Documentation
+# The Able Mind API Documentation
 This document provides structured documentation for the available APIs.
 Each API includes details such as purpose, request structure, parameters, authentication, and example JSON responses.
 
@@ -25,6 +25,7 @@ Authorization: Bearer [BEARER_TOKEN]
 - [get_current_plan_summary](#get_current_plan_summary)
 - [get_current_share_permissions](#get_current_share_permissions)
 - [get_random_quote](#get_random_quote)
+- [generate_faq](#generate_faq)
 - [ignore_merge_account](#ignore_merge_account)
 - [initiate_subscription_payment](#initiate_subscription_payment)
 - [send_registration_otp](#send_registration_otp)
@@ -561,6 +562,64 @@ Authorization: Bearer [BEARER_TOKEN]
   "author": ""
 }
 ```
+
+---
+
+### **generate_faq**
+
+-   **File**: `api_generate_faq.php`.
+-   **Description**: Retrieves a list of Frequently Asked Questions (FAQs) localized in the user's preferred language. The API dynamically inserts user-relevant information, such as the default trial period and a list of available subscription plans, directly into the FAQ responses.
+-   **Method**: `POST`
+-   **Parameters**:
+    -   `user_reference_id` (required, int): The user's ID.
+    -   `user_lang` (optional, string): The two-letter language code for localization. Defaults to 'en'.
+-   **JSON Output**:
+    -   Success (code: 1):
+
+        ```json
+        {
+          "code": 1,
+          "message": "",
+          "data": [
+            {
+              "heading": "General Questions",
+              "items": [
+                {
+                  "question_id": "1",
+                  "question": "Is there a free trial?",
+                  "response": "Yes, we offer a free trial of 3 days for new users to explore our services."
+                },
+                {
+                  "question_id": "2",
+                  "question": "What happens after my trial ends?",
+                  "response": "After the trial, you can choose from one of our subscription plans to continue."
+                }
+              ]
+            },
+            {
+              "heading": "Subscription",
+              "items": [
+                {
+                  "question_id": "3",
+                  "question": "What plans do you offer?",
+                  "response": "We offer the following plans: <ul><li><b>Monthly Plan</b> - Billed every month.</li><li><b>Quarterly Plan</b> - Billed every 3 months.</li></ul>"
+                }
+              ]
+            }
+          ]
+        }
+        ```
+
+    -   Failure (code: 0):
+
+        ```json
+        {
+          "code": 0,
+          "message": "User id cannot be empty",
+          "data": []
+        }
+        ```
+
 
 ---
 
