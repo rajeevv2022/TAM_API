@@ -494,7 +494,7 @@ Authorization: Bearer [BEARER_TOKEN]
     "org_name": "",
     "thot_response_time": 24,
     "delete_confirmation": {
-      "type": "Q",
+      "type": "Q", ("Q" => Question; "M" => Message)
       "message": "You have an active plan. Are you sure you want to delete your account?"
     }
   }
