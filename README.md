@@ -487,11 +487,18 @@ Authorization: Bearer [BEARER_TOKEN]
   "message": "success",
   "status": "success",
   "data": {
-    "end_date": "2024-12-31 23:59:59",
-    "plan_type": "Monthly Subscription",
-    "price_paid": "499",
-    "status": "Active"
+    "end_date": "2026-09-27 23:59:00",
+    "plan_type": "PREMIUM_YEARLY",
+    "plan_source": "PURCHASE",
+    "plan_show_app": "Your Premium Yearly plan is valid until 27 Sep 2026.",
+    "org_name": "",
+    "thot_response_time": 24,
+    "delete_confirmation": {
+      "type": "Q",
+      "message": "You have an active plan. Are you sure you want to delete your account?"
+    }
   }
+}
 ```
 
 ### }
