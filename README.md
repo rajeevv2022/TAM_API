@@ -23,12 +23,103 @@ This override is disabled in staging and production environments.
 Current API Version: v1
 All endpoints are versioned under:
 /api.php/v1/
+=======
+# The Able Mind API Documentation
+This document provides structured documentation for the available APIs.
+Each API includes details such as purpose, request structure, parameters, authentication, and example JSON responses.
+
+## Base URL
+<https://(domain)/api.php/v1/>
 
 ## Authentication
 Authenticated endpoints require:
 
 ```http
 Authorization: Bearer <TOKEN>
+=======
+## Endpoints Index
+- [chat_summary_fb15](#chat_summary_fb15)
+- [check_chat_usage](#check_chat_usage)
+- [check_counsellor_access](#check_counsellor_access)
+- [check_maintenance](#check_maintenance)
+- [check_merge_accounts](#check_merge_accounts)
+- [check_unique_user_name](#check_unique_user_name)
+- [check_valid_email](#check_valid_email)
+- [confirm_merge_accounts](#confirm_merge_accounts)
+- [create_audio_conference](#create_audio_conference)
+- [create_user](#create_user)
+- [delete_user_account](#delete_user_account)
+- [get_current_plan_summary](#get_current_plan_summary)
+- [get_current_share_permissions](#get_current_share_permissions)
+- [get_random_quote](#get_random_quote)
+- [generate_faq](#generate_faq)
+- [ignore_merge_account](#ignore_merge_account)
+- [initiate_subscription_payment](#initiate_subscription_payment)
+- [send_registration_otp](#send_registration_otp)
+- [show_plans](#show_plans)
+- [subscription_payment_confirmation](#subscription_payment_confirmation)
+- [tam_connections_consent](#tam_connections_consent)
+- [third_banner](#third_banner)
+- [update_user_access_code](#update_user_access_code)
+- [update_user_information](#update_user_information)
+- [validate_referral_code](#validate_referral_code)
+- [audio_transcribe](#audio_transcribe)
+- [check_tam_connections_consent](#check_tam_connections_consent)
+- [generate_chat_summary](#generate_chat_summary)
+- [get_complete_ysam_post](#get_complete_ysam_post)
+- [google_audio_transcribe](#google_audio_transcribe)
+- [list_tam_user_conversations_dashboard](#list_tam_user_conversations_dashboard)
+- [list_ysam_posts](#list_ysam_posts)
+- [register_tam_connections_consent](#register_tam_connections_consent)
+- [tam_connections_block_user](#tam_connections_block_user)
+- [tam_connections_send_message](#tam_connections_send_message)
+- [translate](#translate)
+- [upload_audio](#upload_audio)
+- [user_conversations_load](#user_conversations_load)
+- [ysam_add_update_article](#ysam_add_update_article)
+- [ysam_check_usage_tam_connections](#ysam_check_usage_tam_connections)
+- [ysam_connect_to_user](#ysam_connect_to_user)
+- [ysam_follow_user](#ysam_follow_user)
+- [ysam_get_all_categories](#ysam_get_all_categories)
+- [ysam_initialize_form](#ysam_initialize_form)
+- [ysam_report_user_post](#ysam_report_user_post)
+- [ysam_review_message](#ysam_review_message)
+- [ysam_translate](#ysam_translate)
+- [share_private_app_data](#share_private_app_data)
+ 
+
+### API Endpoints
+
+### chat_summary_fb15
+- **File**: api_chat_summary_fb15.php.
+- **Description**: Generates a summary of past chats for a user using an external AI service. It fetches chat history, generates a summary if one doesn't exist, and returns the chat history with summaries. The generated summary includes mood analysis and identifies a central topic.
+- **Method**: POST
+- **Parameters**: 
+  - user_id (required, int): The user's ID.
+  - number_of_chats (optional, int): The number of chat summaries to retrieve. Defaults to a minimum message count for summary generation.
+- **JSON Output**: 
+  - Success (code: 1):
+```json
+{
+  "code": "1",
+  "data": [
+    {
+      "date": "21 Dec 2023 10:30 am (A few hours ago)",
+      "counsellor": "Counsellor Name",
+      "chat_topic": "Romantic Relationship Issues",
+      "feedback_star": "4",
+      "summary": "This is a detailed summary of the conversation.<br><b>Close Chat Remarks:</b> A remark from the counsellor."
+    }
+```
+  ]
+
+### }
+  - Failure (code: 0):
+```json
+{
+  "code": "0",
+  "message": "User id does not exist"
+}
 ```
 
 Mobile endpoints also require:
@@ -488,8 +579,36 @@ Deletes a user account securely. Fails if the user has an active subscription or
 
 ```json
 {
+
 "code": 1,
 "message": "Account successfully deleted"
+=======
+  "response_code": 1,
+  "message": "success",
+  "status": "success",
+  "data": {
+    "end_date": "2026-09-27 23:59:00",
+    "plan_type": "PREMIUM_YEARLY",
+    "plan_source": "PURCHASE",
+    "plan_show_app": "Your Premium Yearly plan is valid until 27 Sep 2026.",
+    "org_name": "",
+    "thot_response_time": 24,
+    "delete_confirmation": {
+      "type": "Q", ("Q" => Question; "M" => Message)
+      "message": "You have an active plan. Are you sure you want to delete your account?"
+    }
+  }
+}
+```
+
+### }
+  - Failure (response_code: 0):
+```json
+{
+  "response_code": 0,
+  "message": "No active plan found",
+  "status": "failure",
+  "data": {}
 }
 ```
 
@@ -561,6 +680,74 @@ Returns a comprehensive summary of the user's active subscription plan, limitati
 
 **Success Schema (200 OK):**
 
+
+=======
+### **generate_faq**
+
+-   **File**: `api_generate_faq.php`.
+-   **Description**: Retrieves a list of Frequently Asked Questions (FAQs) localized in the user's preferred language. The API dynamically inserts user-relevant information, such as the default trial period and a list of available subscription plans, directly into the FAQ responses.
+-   **Method**: `POST`
+-   **Parameters**:
+    -   `user_reference_id` (required, int): The user's ID.
+    -   `user_lang` (optional, string): The two-letter language code for localization. Defaults to 'en'.
+-   **JSON Output**:
+    -   Success (code: 1):
+
+        ```json
+        {
+          "code": 1,
+          "message": "",
+          "data": [
+            {
+              "heading": "General Questions",
+              "items": [
+                {
+                  "question_id": "1",
+                  "question": "Is there a free trial?",
+                  "response": "Yes, we offer a free trial of 3 days for new users to explore our services."
+                },
+                {
+                  "question_id": "2",
+                  "question": "What happens after my trial ends?",
+                  "response": "After the trial, you can choose from one of our subscription plans to continue."
+                }
+              ]
+            },
+            {
+              "heading": "Subscription",
+              "items": [
+                {
+                  "question_id": "3",
+                  "question": "What plans do you offer?",
+                  "response": "We offer the following plans: <ul><li><b>Monthly Plan</b> - Billed every month.</li><li><b>Quarterly Plan</b> - Billed every 3 months.</li></ul>"
+                }
+              ]
+            }
+          ]
+        }
+        ```
+
+    -   Failure (code: 0):
+
+        ```json
+        {
+          "code": 0,
+          "message": "User id cannot be empty",
+          "data": []
+        }
+        ```
+
+
+---
+
+### ignore_merge_account
+- **File**: api_ignore_merge_account.php.
+- **Description**: Ignores the flag to merge a user's accounts.
+- **Method**: POST
+- **Parameters**: 
+  - user_id (required, string): The user's ID.
+- **JSON Output**: 
+  - Success (status: success):
 ```json
 {
 "response_code": 1,
