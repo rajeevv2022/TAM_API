@@ -184,7 +184,8 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_maintenance \
 "RESOURCES": false,
 "ASSESSMENTS": false,
 "CONNECTIONS": false,
-"YSAM": false
+"YSAM": false,
+"SHORT_MESSAGE": "Offline"
 }
 ```
 
@@ -465,6 +466,8 @@ curl -X POST https://[BASE_URL]/api.php/v1/create_user \
 "show_user_usage_policy": ""
 }
 ```
+** Note: **
+- The optional show_user_usage_policy field is dynamically generated using the user's assigned subscription category and current monthly feature restrictions.
 
 ## 9. Delete User Account
 
@@ -543,7 +546,7 @@ Retrieves localized FAQs and dynamic subscription plan descriptions with variabl
 
 ## 11. Get Current Plan Summary
 
-Returns a comprehensive summary of the user's active subscription plan, limitations, and expiry dates.
+Returns a comprehensive summary of the user's active subscription plan, feature access, monthly usage limits, and expiry details.
 
 - **Endpoint:** /api.php/v1/get_current_plan_summary
 
@@ -564,18 +567,45 @@ Returns a comprehensive summary of the user's active subscription plan, limitati
 
 ```json
 {
-"response_code": 1,
-"status": "success",
-"message": "success",
-"data": {
-"plan_name": "Premium",
-"end_date": "2026-12-31",
-"fb15_minutes_per_day": 60,
-"thot_tracking_unit": "w",
-"trial_category": "N"
-}
+  "response_code": 1,
+  "status": "success",
+  "message": "success",
+  "data": {
+    "status": "1",
+    "regime": "new",
+    "plan_show_app": "Premium active till 31 Dec 2026",
+    "message": "Your Premium subscription is active till 31 Dec 2026",
+    "plan_type": "PRM",
+    "plan_source": "PURCHASE",
+    "subscription_category_code": "PRM",
+    "subscription_category_name": "Premium",
+    "category_id": "3",
+    "trial_category": "N",
+    "end_date": "2026-12-31 23:59:59",
+    "fb15_minutes_per_day": 60,
+    "fb15_minutes_per_month": 1800,
+    "thot_words_per_month": 100000,
+    "thot_response_time": 24,
+    "tam_connections_enabled": "Y",
+    "tide_over_together_enabled": "Y",
+    "voice_notes": "Y",
+    "personal_consultation_enabled": "Y",
+    "subscription_category_global_usage": "N",
+    "subscription_category_global_minutes": 0,
+    "enable_thot_attachment": "Y",
+    "org_id": "",
+    "org_name": "",
+    "delete_confirmation": {
+      "type": "Q",
+      "message": "Are you sure you want to delete your account?"
+    }
+  }
 }
 ```
+**Notes:**
+- THoT limits are now enforced using monthly word limits.
+- FB15 limits may include both daily and monthly caps depending on the subscription configuration.
+- Message-count based THoT limits and tracking-unit fields are deprecated and no longer returned.
 
 ## 12. Get Current Share Permissions
 
@@ -675,6 +705,10 @@ Creates a Razorpay Order ID for purchasing a subscription, factoring in GST, app
 - **Rate Limit:** 40 requests / minute
 
 - **Security Notes:** Generates a secure txnid and stores preliminary INITIATED status in global_mysql_payment_table.
+
+** Note: **
+- Users with an active lite-duration plan may be prevented from purchasing overlapping lite-duration plans.
+- Certain plan combinations may be automatically hidden or disabled based on active subscription status.
 
 **Parameters:**
 
@@ -790,7 +824,8 @@ Updates the binary/encrypted database toggles dictating which trackers the user 
 
 ## 19. Show Plans
 
-Fetches all available subscription plans relevant to the user, masking irrelevant plans if the user is bound to a corporate domain.
+Fetches all publicly available subscription plans relevant to the user.  
+Plans may be filtered or hidden based on corporate restrictions, existing active plans, lite-plan eligibility rules, regional pricing, or account status.
 
 - **Endpoint:** /api.php/v1/show_plans
 
@@ -809,18 +844,100 @@ Fetches all available subscription plans relevant to the user, masking irrelevan
 **Success Schema (200 OK):**
 
 ```json
-{
-"status": "success",
-"data": [
-{
-"plan_code": "PREM1M",
-"price": 999,
-"duration": "1 month",
-"description": "Unlimited text therapy and library access."
-}
+[
+  {
+    "code": "1",
+    "message": "",
+    "default_card_to_show": "card_PREM1M",
+    "cards": [
+      {
+        "id": "plans_heading",
+        "type": "L",
+        "text": "Choose a plan"
+      },
+      {
+        "id": "gift_card",
+        "type": "G",
+        "plan_name": "Gift a Subscription",
+        "url": "https://example.com/gift-a-subscription.php?key=XXXX",
+        "text": [
+          "Gift premium emotional wellness support",
+          "Flexible plan options available",
+          "Instant delivery supported"
+        ],
+        "show_purchase_button": "Y",
+        "show_purchase_text": "Gift Now"
+      },
+      {
+        "id": "card_PREM1M",
+        "plan_code": "PREM1M",
+        "type": "C",
+        "plan_name": "Premium Monthly",
+        "recommended_flag": "Y",
+        "active": "N",
+        "active_plan_message": "",
+        "show_price": "Y",
+        "subscription_price": "999",
+        "gst_rate": "18",
+        "transaction_fees": "2",
+        "international_flag": "N",
+        "user_currency": "₹",
+        "conversion_rate_user": "1",
+        "price_to_show": "₹999 valid for 1 month",
+        "show_purchase_button": "Y",
+        "show_purchase_text": "Purchase",
+        "url": "https://example.com/confirm-payment.php?...",
+        "payment_description": "Subscription payment for Premium Monthly",
+        "text": [
+          "Daily emotional wellness support",
+          "Priority response time",
+          "Voice notes enabled",
+          "TAM Connections enabled"
+        ]
+      },
+      {
+        "id": "history_card",
+        "type": "H",
+        "text": "Purchase History",
+        "plan_purchase_history": [
+          {
+            "package_type": "Premium Monthly",
+            "start_date": "01 Jan 2026",
+            "end_date": "31 Jan 2026",
+            "package_price": "₹999",
+            "payment_status": "Paid",
+            "plan_booked_date": "Monday, 01 Jan 2026",
+            "package_status": "Active",
+            "active_status": "Y",
+            "receipt_button_show": "Y",
+            "receipt_button_label": "Download Receipt",
+            "receipt_download_url": "https://example.com/subscription-pricing.php?download_app_subscription_receipt=XXXX"
+          }
+        ]
+      }
+    ]
+  }
 ]
-}
 ```
+Card Types
+| **Type** | **Description** |
+|---|-----------------|
+| L |Informational label/message card
+| G |Gift subscription card
+| C |Subscription plan card
+| H |Purchase history card
+
+** Notes: **
+- Pricing returned is already localized based on the user currency and country.
+- Purchase buttons may be disabled depending on:
+	existing active plans,
+	corporate restrictions,
+	lite-plan purchase restrictions,
+	maintenance windows.
+- Text inside a plan card contains human-readable feature lines intended for direct UI rendering.
+- Plan restrictions are now based on:
+	subscription_category_fb15_month
+	subscription_category_thot_words_month
 
 ## 20. Subscription Payment Confirmation
 
@@ -1019,7 +1136,7 @@ Fetches LLM-powered summaries for a user's past "Feel Better in 15" chat session
 
 ## 26. Check Chat Usage (FB15 / TOT)
 
-Monitors and enforces limits on "Feel Better in 15" (minutes) or "Therapy Over Text" (messages/words) based on the user's active plan.
+Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy Over Text" (THoT) based on the user's active subscription plan.
 
 - **Endpoint:** /api.php/v1/check_chat_usage
 
@@ -1029,7 +1146,7 @@ Monitors and enforces limits on "Feel Better in 15" (minutes) or "Therapy Over T
 
 - **Rate Limit:** 40 requests / minute
 
-- **Security Notes:** Checks the user's global plan tier. Enforces a hardcoded cooling period for FB15.
+- **Security Notes:** Checks the user's active subscription category, global usage rules, and remaining monthly usage allowances before permitting access.
 
 **Parameters:**
 
@@ -1043,19 +1160,29 @@ Monitors and enforces limits on "Feel Better in 15" (minutes) or "Therapy Over T
 
 ```json
 {
-"code": 1,
-"minutes_available": 45,
-"words_available": "",
-"show_buttons": { "count": 0, "buttons": [] }
+  "code": 1,
+  "minutes_available": 45,
+  "monthly_words_available": 85000,
+  "show_buttons": {
+    "count": 0,
+    "buttons": []
+  }
 }
 ```
+**Usage Enforcement Rules**
+- FB15 usage may be controlled using:
+    fb15_minutes_per_day
+    fb15_minutes_per_month
+- THoT usage is enforced using:
+    thot_words_per_month
+- Legacy message-count and tracking-unit based THoT enforcement has been deprecated.
 
 **Error Schema (200 OK - Usage Exceeded):**
 
 ```json
 {
 "code": 0,
-"text": "You have exhausted your daily chat limit.",
+"text": "You have exhausted your available usage limit for this plan.",
 "show_buttons": {
 "count": 2,
 "buttons": [
@@ -1562,6 +1689,8 @@ curl -X POST https://[BASE_URL]/api.php/v1/connections_send_message \
 }
 }
 ```
+** Note: **
+- Attachment availability may depend on the user's active subscription plan and THoT attachment permissions.
 
 ## 42. User Load Conversations
 
