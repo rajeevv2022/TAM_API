@@ -6,14 +6,64 @@
 
 - **HTTP Status Codes:** Most APIs return 200 OK universally, using an internal "code": 1 (success) or "code": 0 (failure) schema. Hard failures (missing files/auth) return 403 Forbidden, 404 Not Found, or 500 Internal Server Error.
 
-- **Security:** All endpoints check for SECURE_API_ACCESS. Requests hitting the files directly without passing through the Laravel/PHP router will receive a 403 Forbidden.
-- **Firebase AppCheck enforcement** applies to mobile application endpoints even when Bearer authentication is present.
+- **Security:** `html/api/v1/*.php` files exit with plain `Forbidden` unless `SECURE_API_ACCESS` is defined. `html/api.php` defines that constant before including the mapped script.
+
+- **Firebase App Check:** Not read or enforced by `html/api.php`. When the mobile app calls Laravel first, App Check applies at that layer per Laravel configuration.
+
+### Mobile app path (Laravel proxy)
+
+The Flutter app calls **Laravel** routes (for example POST {APP_BASE}/user_conversations_dashboard) with **JSON** bodies (Content-Type: application/json) and standard mobile headers. Laravel controllers forward to the legacy **/api.php/v1/{apiName}** endpoints using server-side bearer + form-style POST fields.
+
+**Runtime rules (implemented):**
+
+- **Connections dashboard (inbox):** Laravel returns { "status", "message", "data": { "conversations", "total_unread", "discover_groups", "dashboard_message", … } }. Clients also accept a **legacy-flat** shape where conversations and dashboard_message appear at the **root** (backwards compatibility).
+- **Connections get messages (`get_connection_messages`):** Canonical upstream fields read in `html/api/v1/tam_connections_get_messages.php` are `room_name`, `lastSeq`, `beforeSeq`, `user_id` (or JWT-populated `auth_user_id` via `$_REQUEST`), and `user_lang`. Laravel may accept additional aliases; they are not read by this legacy file.
+- **Connections send message:** Upstream persists **reply_to_message_id** only. The Laravel proxy accepts **reply_to_id** as an alias when reply_to_message_id is omitted (logged in app.debug only). Fields such as reply_to_content / reply_to_sender / timestamp_browser are **not** read by the legacy send handler and are not forwarded as distinct upstream fields.
+- **Connections group subscribe:** Upstream requires **user_id** (reservation user id) and **group_id**.
+
+### Contract governance (Phase 2)
+
+- **Canonical vs compatibility:** Each Connections subsection below documents **canonical** legacy field names. **Compatibility aliases** accepted only at the Laravel proxy are listed under *Mobile app path (Laravel proxy)* above—not as legacy /api.php requirements.
+- **Artifacts (Flutter repo):** TAM_FLUTTER/docs/governance/README.md, docs/governance/snapshots/critical_api_envelopes.json, and generated docs/governance/generated/CONTRACT_INVENTORY.* from the PHP builder.
+- **Curated crosswalk (Dart, tool-only):** TAM_FLUTTER/tool/governance/contract_governance_crosswalk.dart — critical Flutter AppConstants ↔ Laravel route segment ↔ api.json key.
+- **Local validation:** From TAM_FLUTTER/, run dart run tool/contract_governance.dart (fails if a curated route or api.json key is missing).
+- **Broad inventory:** From tam-admin-application/tools/, run php governance_build_inventory.php (regenerates route/env/api.json lists).
+- **Drift telemetry (mobile):** Repeated invalid **WebSocket token** JSON envelopes (HTTP 200 but missing data.jwt) emit a bounded Crashlytics breadcrumb (see ContractDriftWatch). Repeated **malformed WebSocket wire frames** (JSON decode failure, non-object root, or non-string type) emit a bounded Crashlytics event (ContractDriftWatch.noteMalformedWsWire). Maintenance unknown-key checks remain **debug-only** (debugAssertMaintenanceResponseContract).
+
+### Operational governance (Phase 3 — release & deployment safety)
+
+**Source of truth:** Runtime code (Laravel proxies, CurlPhp.php, legacy html/api/v1/*.php, Flutter parsers) wins over this document. Update APIs.md and TAM_FLUTTER/docs/governance/snapshots/critical_api_envelopes.json when those layers change.
+
+| Layer | Role |
+|-------|------|
+| **Flutter** | Calls POST {BASE_URL}/{AppConstants.*_URI} with bearer + AppCheck; parses JSON envelopes documented per feature. |
+| **Laravel routes/api.php** | Authenticated mobile routes; maps to App\Http\Controllers\Api\* methods. |
+| **CurlPhp.php** | Resolves env('API_*') to upstream legacy URLs. |
+| **html/api/api.json** | allowedApis keys → v1 PHP script basenames executed by the router. |
+| **html/api/v1/*.php** | Legacy implementation and canonical field names for upstream. |
+| **WebSocket** | JWT from generate_ws_token → RemoteConfigService.tamWebSocketUrl → /socket/?token=; inbound frames are JSON objects with string type (see table below). |
+
+**Pre-release commands (no external services):** from TAM_FLUTTER/, run dart run tool/release_integrity.dart (Phase 3A+3C: Flutter ↔ Laravel route ↔ controller PHP ↔ CurlPhp env usage ↔ api.json v1 script on disk ↔ optional --laravel-env= URL checks), dart run tool/contract_regression.dart (Phase 3B envelope snapshot warnings), and dart run tool/contract_governance.dart (Phase 2 crosswalk).
+
+**WebSocket inbound contracts (Flutter TamWebSocketService):** All frames are JSON with string type. Room-scoped delivery uses room when present; otherwise the client falls back to the sole subscribed room or the active chat room for typing/status.
+
+| type | Required / commonly used fields | Notes |
+|--------|-----------------------------------|--------|
+| message | server_seq, messageId, from, content; optional translated_text, timestamp / timestamp_browser, nested reply_to (messageId, content, sender) | Bumps dashboard inbound events; dedupes by messageId / seq. |
+| recovery | Same as message | Merged into history **without** dashboard unread/toast side-effects. |
+| message_status | messageId, status | Merges delivery state with monotonic rank (sent → delivered → seen). |
+| delivered | messageId | Promotes local row to delivered. |
+| status | roomUsers (list of maps with userId or string ids) **or** userId + online | Presence for active recipient. |
+| typing | from, typing (bool) | Ignores self-typing; 3s debounce timer. |
+| Client → server join / leave | room, from | Ref-counted per feature owners. |
+
+**Contract ownership:** Product-critical HTTP paths are curated in TAM_FLUTTER/tool/governance/contract_governance_crosswalk.dart. Broad route/env lists are **generated** (governance_build_inventory.php) — treat as inventory, not behavioral specs.
 
 ### Development Environment Override
 In development environments only, Firebase AppCheck validation may be bypassed by sending:
-```http
+http
 X-Firebase-AppCheck: A1B2C3D4E5F6
-```
+
 This override is disabled in staging and production environments.
 
 *Unless otherwise specified, POST endpoints use:*  
@@ -21,47 +71,51 @@ This override is disabled in staging and production environments.
 
 ## Versioning
 
-Current API Version: v1
-All endpoints are versioned under:
-/api.php/v1/
+Current API Version: `v1`. Legacy scripts live under `html/api/v1/`. The HTTP router is `html/api.php` (not `html/api/api.php`).
 
 ## Authentication
-Authenticated endpoints require:
 
-```http
-Authorization: Bearer <TOKEN>
-```
+**Enforced by `html/api.php` before any `html/api/v1/*.php` executes:**
 
-Mobile endpoints also require:
-```http
-X-Firebase-AppCheck: <APPCHECK_TOKEN>
-```
+| Requirement | Runtime behavior |
+|---|---|
+| HTTPS | Non-HTTPS requests receive JSON `{"error":"HTTPS required"}` with HTTP 403. |
+| `Authorization` header | Required. Must be `Bearer <token>`. Missing/invalid format → JSON `{"error":"Missing or Invalid Authorization"}` with HTTP 401. |
+| Bearer validation | If `<token>` contains `.`, it is decoded as HS256 JWT using `tam_connections_jwt_secret` (same secret as WebSocket JWT issuance). On success, `$_REQUEST['auth_user_id']` is set to payload `id`. If JWT decode fails, `<token>` is compared (timing-safe) to `BEARER_TOKEN` from `html/api/api.json`. If neither succeeds → JSON `{"error":"Invalid Authorization"}` with HTTP 403. |
+| Firebase App Check | Not enforced in `html/api.php`. |
+
+**Request body:** Raw JSON bodies are merged into `$_POST` by `html/api.php` before the v1 script runs (same keys as JSON root).
 
 ## Response Standards
 
-The API currently contains legacy and modern response formats.
+There is **no single global envelope**. Each v1 script echoes its own JSON (or plain `Forbidden` when `SECURE_API_ACCESS` is absent).
 
-Possible success indicators include:
-- `"code": 1`
-- `"response_code": "1"`
-- `"status": "success"`
-- `"status": true`
+Across endpoints you may see, non-exhaustively:
 
-Note:
-1. Numeric status fields may be returned as either integers or strings depending on legacy endpoint implementation.
-2. Boolean values may be returned as native booleans, integers (1/0), or strings depending on legacy endpoint behavior.
-3. Validate responses based on endpoint-specific schemas.
+- Boolean `status` (`true` / `false`) with `message` (string) and `data` (array or object).
+- String `"code"` such as `"1"` / `"0"` (legacy list payloads).
+- HTTP 500 from the router with `{"error":"Internal server error"}` on fatal errors in the router wrapper.
+
+Numeric and boolean-like fields may appear as strings or native JSON types depending on the script. Always branch on the **specific** endpoint implementation.
+
+### Nested objects and arrays
+
+Where responses include arrays of objects (for example `conversations[]`, `messages[]`, `data.posts[]`), this document lists **each object field** in a table: type, presence (`S`ingle / `G`roup / both), and runtime notes. Endpoint sections that still use only a minimal JSON example are marked as **summary**; prefer the field tables when present.
 
 ## Base URL
 
-```text
+text
 https://[BASE_URL]
 Development: https://localhost
 Staging: https://tamweb.theablemind.com
 Production: https://theablemind.com
-```
+
 
 All endpoints below are relative to the base URL.
+
+### Documentation depth by section
+
+Field-level tables for **nested** response objects (arrays of maps, `data.*` shapes) are present for: **§21 Third Banner**, **§30 Get Complete YSAM Post**, **§32 List YSAM Posts**, **§34–§42** (Connections family + user load), **§52 Get Default Countries**. Remaining numbered sections still use shorter parameter/example blocks; extend them using the same table style when auditing each `html/api/v1/*.php` file.
 
 ## 1. Check Counsellor Access
 
@@ -86,24 +140,24 @@ Validates a Google OAuth2 access token for an employee, provisions or updates th
 
 **Example Payload (Form Data):**
 
-```text
+text
 access_token=ya29.a0AfB_byC...&user_lang=en
-```
+
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/check_counsellor_access \
 -H "Authorization: Bearer YOUR_LARAVEL_TOKEN" \
 -H "X-Firebase-AppCheck: YOUR_APP_CHECK_TOKEN" \
 -H "Content-Type: application/x-www-form-urlencoded" \
 -d "access_token=ya29.a0AfB_byC..." \
 -d "user_lang=en"
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 [
 {
 "code": 1,
@@ -122,11 +176,11 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_counsellor_access \
 "message": ""
 }
 ]
-```
+
 
 **Error Schema (200 OK - Soft Fail):**
 
-```json
+json
 [
 {
 "code": 0,
@@ -134,21 +188,30 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_counsellor_access \
 "message": "Access Denied. This feature is only available to employees of The Able Mind."
 }
 ]
-```
+
 
 ## 2. Check Maintenance
 
 Checks if the application is currently under maintenance and returns the availability status of specific modules.
 
-- **Endpoint:** /api.php/v1/check_maintenance
+- **Legacy endpoint:** /api.php/v1/check_maintenance
+- **Laravel route (mobile):** POST {APP_BASE}/check_maintenance with **JSON** body (same field names: user_lang, timezone).
 
 - **Method:** POST
 
-- **Content-Type:** application/x-www-form-urlencoded
+- **Content-Type:** application/x-www-form-urlencoded (legacy direct). **Mobile:** application/json to Laravel.
 
 - **Rate Limit:** 20 requests / minute (Public Route)
 
 - **Security Notes:** Unauthenticated. Relies on Firebase AppCheck to prevent abuse.
+
+**Canonical response keys (mobile MaintenanceConfig):**
+
+- **UPDATION_INPROGRESS** (bool): global maintenance lock when true.
+- **Feature keys** (bool): REGISTRATION, FEEL_BETTER_IN_15, THERAPY_OVER_TEXT, NIGHT_AUXIE, TROOPERS_TOGETHER, LIBRARY, RESOURCES, ASSESSMENTS, CONNECTIONS, YSAM — true means feature **enabled**.
+- **Meta:** MESSAGE_TITLE, MESSAGE, LIVE_BACK_TIME, SHORT_MESSAGE (optional tile hint).
+
+Older examples may show MAINTENANCE_ACTIVE; the **runtime** mobile client uses **UPDATION_INPROGRESS** (see Flutter MaintenanceConfig).
 
 **Parameters:**
 
@@ -159,19 +222,19 @@ Checks if the application is currently under maintenance and returns the availab
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/check_maintenance \
 -H "X-Firebase-AppCheck: YOUR_APP_CHECK_TOKEN" \
 -H "Content-Type: application/x-www-form-urlencoded" \
 -d "user_lang=en" \
 -d "timezone=America/New_York"
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
-"UPDATION_INPROGRESS": true,
+"UPDATION_INPROGRESS": false,
 "MESSAGE_TITLE": "Scheduled Maintenance",
 "MESSAGE": "We will be back by Monday, 01 Jan 2026 [10:00 am EST]",
 "LIVE_BACK_TIME": "2026-01-01T15:00:00Z",
@@ -187,7 +250,15 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_maintenance \
 "YSAM": false,
 "SHORT_MESSAGE": "Offline"
 }
-```
+
+** Note: **
+true = enabled
+false means:
+	- disabled
+	- unavailable
+	- hidden
+	- under maintenance
+depending on client behavior
 
 ## 3. Check Merge Accounts
 
@@ -213,18 +284,18 @@ Checks if there are multiple accounts associated with the provided email or phon
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/check_merge_accounts \
 -H "Authorization: Bearer YOUR_LARAVEL_TOKEN" \
 -H "X-Firebase-AppCheck: YOUR_APP_CHECK_TOKEN" \
 -H "Content-Type: application/x-www-form-urlencoded" \
 -d "user_email=test@example.com" \
 -d "login_type=E"
-```
+
 
 **Success Schema (200 OK):** *(Note: Internal wrapper returns data dynamically based on the underlying check_merge_accounts helper function).*
 
-```json
+json
 {
 "status": "success",
 "data": {
@@ -233,7 +304,7 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_merge_accounts \
 "accounts_to_merge": [124, 125]
 }
 }
-```
+
 
 ## 4. Check Unique User Name
 
@@ -259,34 +330,34 @@ Validates whether a requested username is available or already taken by another 
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/check_unique_user_name \
 -H "Authorization: Bearer YOUR_LARAVEL_TOKEN" \
 -H "X-Firebase-AppCheck: YOUR_APP_CHECK_TOKEN" \
 -H "Content-Type: application/x-www-form-urlencoded" \
 -d "user_name=johndoe99"
-```
+
 
 **Success Schema (200 OK - Name Available):**
 
-```json
+json
 {
 "response_code": "1",
 "message": "success",
 "status": "success",
 "data": ""
 }
-```
+
 **Error Schema (200 OK - Name Taken):**
 
-```json
+json
 {
 "response_code": "0",
 "message": "Provided username is already taken. Please try another one.",
 "status": "failure",
 "data": ""
 }
-```
+
 
 ## 5. Check Valid Email
 
@@ -310,35 +381,35 @@ Performs deep validation on an email address, checking MX DNS records and ensuri
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/check_valid_email \
 -H "Authorization: Bearer YOUR_LARAVEL_TOKEN" \
 -H "X-Firebase-AppCheck: YOUR_APP_CHECK_TOKEN" \
 -H "Content-Type: application/x-www-form-urlencoded" \
 -d "user_email=legit.user@gmail.com"
-```
+
 
 **Success Schema (200 OK - Valid):**
 
-```json
+json
 {
 "response_code": "1",
 "message": "Email id provided is valid.",
 "status": "success",
 "data": ""
 }
-```
+
 
 **Error Schema (200 OK - Disposable/Invalid):**
 
-```json
+json
 {
 "response_code": "-1",
 "message": "Email id provided is a disposable id. [BASE_URL] (tempmail.com) is invalid.",
 "status": "failure",
 "data": ""
 }
-```
+
 
 ## 6. Confirm Merge Accounts
 
@@ -363,22 +434,22 @@ Executes the account merging process, consolidating the selected duplicate accou
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/confirm_merge_accounts \
 -H "Authorization: Bearer <TOKEN>" \
 -H "X-Firebase-AppCheck: <APPCHECK_TOKEN>" \
 -d "user_id=123" \
 -d "account_list=124,125"
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": "success",
 "data": "Accounts merged successfully"
 }
-```
+
 
 ## 7. Create Audio Conference
 
@@ -405,14 +476,14 @@ Creates or updates a scheduled audio conference room and assigns moderators/coun
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "response_code": "1",
 "message": "success",
 "status": "success",
 "data": ""
 }
-```
+
 
 ## 8. Create User
 
@@ -446,18 +517,18 @@ Registers a new user account, handling profile details, guardian information (fo
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/create_user \
 -H "X-Firebase-AppCheck: <APPCHECK_TOKEN>" \
 -d "login_type=E" \
 -d "user_email=newuser@example.com" \
 -d "user_name=Jane Doe" \
 -d "user_password=SecurePass123"
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "response_code": "1",
 "status": "success",
@@ -465,7 +536,7 @@ curl -X POST https://[BASE_URL]/api.php/v1/create_user \
 "data": { "user_id": 123 },
 "show_user_usage_policy": ""
 }
-```
+
 ** Note: **
 - The optional show_user_usage_policy field is dynamically generated using the user's assigned subscription category and current monthly feature restrictions.
 
@@ -490,21 +561,21 @@ Deletes a user account securely. Fails if the user has an active subscription or
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "message": "Account successfully deleted"
 }
-```
+
 
 **Error Schema (200 OK - Active Subscription):**
 
-```json
+json
 {
 "code": 0,
 "message": "Cannot delete account with an active subscription."
 }
-```
+
 
 ## 10. Generate FAQ
 
@@ -525,7 +596,7 @@ Retrieves localized FAQs and dynamic subscription plan descriptions with variabl
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "message": "",
@@ -542,7 +613,7 @@ Retrieves localized FAQs and dynamic subscription plan descriptions with variabl
 }
 ]
 }
-```
+
 
 ## 11. Get Current Plan Summary
 
@@ -565,7 +636,7 @@ Returns a comprehensive summary of the user's active subscription plan, feature 
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
   "response_code": 1,
   "status": "success",
@@ -601,7 +672,7 @@ Returns a comprehensive summary of the user's active subscription plan, feature 
     }
   }
 }
-```
+
 **Notes:**
 - THoT limits are now enforced using monthly word limits.
 - FB15 limits may include both daily and monthly caps depending on the subscription configuration.
@@ -628,7 +699,7 @@ Fetches the user's current database toggles for sharing data (Journal, Mood, Hab
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "message": "Settings loaded successfully",
@@ -640,7 +711,7 @@ Fetches the user's current database toggles for sharing data (Journal, Mood, Hab
 "assessments_shared": true
 }
 }
-```
+
 
 ## 13. Get Random Quote
 
@@ -661,12 +732,12 @@ Retrieves a random motivational quote localized to the user's language.
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "quote": "The best way out is always through.",
 "author": "Robert Frost"
 }
-```
+
 
 ## 14. Ignore Merge Account
 
@@ -687,12 +758,12 @@ Sets a flag to permanently dismiss prompts asking the user to merge duplicate ac
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": "success",
 "data": "Merge ignored successfully"
 }
-```
+
 
 ## 15. Initiate Subscription Payment
 
@@ -721,7 +792,7 @@ Creates a Razorpay Order ID for purchasing a subscription, factoring in GST, app
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
   "code": "1",
   "razorpay_json": {
@@ -735,7 +806,7 @@ Creates a Razorpay Order ID for purchasing a subscription, factoring in GST, app
     }
   }
 }
-```
+
 
 ## 16. Send Registration OTP
 
@@ -756,12 +827,12 @@ Generates and sends a One-Time Password to the user's email address for pre-regi
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": "1",
 "message": "OTP sent successfully"
 }
-```
+
 
 ## 17. Share App Data via Email
 
@@ -773,7 +844,7 @@ Compiles a comprehensive HTML report of the user's active trackers (Journal, Moo
 
 - **Rate Limit:** 40 requests / minute
 
-- **Security Notes:** Includes Strict regex filtering (`/[<>{}\\|\\\\]/`) on counsellor_message to prevent XSS injection. Validates email domain. Limited to 1 share per day per user.
+- **Security Notes:** Includes Strict regex filtering (/[<>{}\\|\\\\]/) on counsellor_message to prevent XSS injection. Validates email domain. Limited to 1 share per day per user.
 
 **Parameters:**
 
@@ -785,12 +856,12 @@ Compiles a comprehensive HTML report of the user's active trackers (Journal, Moo
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "message": "Progress report successfully shared with your counsellor."
 }
-```
+
 
 ## 18. Share Private App Data (Permissions Toggle)
 
@@ -815,12 +886,12 @@ Updates the binary/encrypted database toggles dictating which trackers the user 
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "message": "Settings updated successfully"
 }
-```
+
 
 ## 19. Show Plans
 
@@ -843,7 +914,7 @@ Plans may be filtered or hidden based on corporate restrictions, existing active
 
 **Success Schema (200 OK):**
 
-```json
+json
 [
   {
     "code": "1",
@@ -918,7 +989,7 @@ Plans may be filtered or hidden based on corporate restrictions, existing active
     ]
   }
 ]
-```
+
 Card Types
 | **Type** | **Description** |
 |---|-----------------|
@@ -962,22 +1033,22 @@ Verifies the Razorpay payment signature, marks the order as paid in the database
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/subscription_payment_confirmation \
 -H "Authorization: Bearer <TOKEN>" \
 -d "razorpay_order_id=order_123abc" \
 -d "razorpay_payment_id=pay_123abc" \
 -d "razorpay_signature=a1b2c3d4e5f6g7h8..."
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": "1",
 "message": "Your Premium plan is now active."
 }
-```
+
 
 ## 21. Third Banner (Dashboard Data)
 
@@ -999,16 +1070,29 @@ Aggregates key data for the mobile UI dashboard, including upcoming appointments
 
 **Success Schema (200 OK):**
 
-```json
+Root keys from `html/api/v1/api_third_banner.php`:
+
+| Field | Type | Notes |
+|---|---|---|
+| code | string | `"1"` success, `"0"` when `user_reference_id` empty or error. |
+| next_appointment | mixed | Return value of `get_upcoming_reservation` (structure defined in `html/banner_functions.php` / helpers). |
+| tot | mixed | `get_upcoming_tot_session($connection)`. |
+| next_slot | object | Keys **`counsellor`** (string name or **""**) and **`next_counsellor_slot`** (array of slot strings, possibly empty). |
+| tam_library_url | string | `global_url + "tam-app-library.php?token=" + encrypted user_reference_id`. |
+| tam_resource_center_url | string | Same pattern for `tam-app-resource-center.php`. |
+
+Example (illustrative shapes only):
+
+json
 {
 "code": "1",
-"next_appointment": { "date": "2026-06-01", "time": "10:00 AM" },
-"tot": { "status": "active" },
-"next_slot": { "counsellor": "Jane Doe", "next_counsellor_slot": ["10:00 AM", "11:00 AM"] },
+"next_appointment": {},
+"tot": {},
+"next_slot": { "counsellor": "", "next_counsellor_slot": [] },
 "tam_library_url": "https://[BASE_URL]/tam-app-library.php?token=...",
 "tam_resource_center_url": "https://[BASE_URL]/tam-app-resource-center.php?token=..."
 }
-```
+
 
 ## 22. Update User Access Code
 
@@ -1031,14 +1115,14 @@ Updates a user's corporate access code and/or employee ID to instantly grant the
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "response_code": 1,
 "message": "Access code updated successfully",
 "status": "success",
 "data": { }
 }
-```
+
 
 ## 23. Update User Information
 
@@ -1065,12 +1149,12 @@ Modifies core profile details, including contact numbers, guardian information (
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": "1",
 "message": "Information updated successfully"
 }
-```
+
 
 ## 24. Validate Referral Code
 
@@ -1092,13 +1176,13 @@ Validates an ambassador referral code to dynamically calculate and apply discoun
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": "1",
 "discount": "10.00",
 "message": "You've received a 10% discount through John's referral."
 }
-```
+
 
 ## 25. Chat Summary (Feel Better in 15)
 
@@ -1119,7 +1203,7 @@ Fetches LLM-powered summaries for a user's past "Feel Better in 15" chat session
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": "1",
 "data": [
@@ -1132,7 +1216,7 @@ Fetches LLM-powered summaries for a user's past "Feel Better in 15" chat session
 }
 ]
 }
-```
+
 
 ## 26. Check Chat Usage (FB15 / TOT)
 
@@ -1158,7 +1242,7 @@ Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy O
 
 **Success Schema (200 OK - Usage Allowed):**
 
-```json
+json
 {
   "code": 1,
   "minutes_available": 45,
@@ -1168,7 +1252,7 @@ Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy O
     "buttons": []
   }
 }
-```
+
 **Usage Enforcement Rules**
 - FB15 usage may be controlled using:
     fb15_minutes_per_day
@@ -1179,7 +1263,7 @@ Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy O
 
 **Error Schema (200 OK - Usage Exceeded):**
 
-```json
+json
 {
 "code": 0,
 "text": "You have exhausted your available usage limit for this plan.",
@@ -1191,7 +1275,7 @@ Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy O
 ]
 }
 }
-```
+
 
 ## 27. Audio Transcribe (Main)
 
@@ -1220,7 +1304,7 @@ Transcribes audio using an LLM abstraction layer. It supports Text-to-Speech (TT
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "text": "Hello, I need some help.",
@@ -1228,7 +1312,7 @@ Transcribes audio using an LLM abstraction layer. It supports Text-to-Speech (TT
 "language_full": "English",
 "audio": "https://[BASE_URL]/translate_api/voice_notes/uid.mp3"
 }
-```
+
 
 ## 28. Generate Chat Summary (Cron / Manual)
 
@@ -1251,43 +1335,65 @@ Generates a structured clinical summary for a specific chat session using an LLM
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "close_summary": "The user expressed feelings of isolation. Coping mechanisms were discussed."
 }
-```
+
 
 ## 29. Generate WebSocket Token
 
-Dispenses a short-lived JWT token securely signed by the backend, allowing the frontend Dart client to connect to the WebSocket server.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/generate_ws_token
+```text
+POST /api.php/v1/generate_ws_token
+```
 
-- **Method:** POST
+## Purpose
 
-- **Content-Type:** application/x-www-form-urlencoded
+Issues an HS256 JWT (`tam_connections_jwt_secret`, payload `iss`=`theablemind_web`, `aud`=`tam_api`, `id`=`user_reference_id`, `name` decrypted display name, `iat`/`exp` with **3600s** lifetime) for WebSocket authentication.
 
-- **Rate Limit:** 40 requests / minute
+## Authentication
 
-- **WebSocket Lifecycle:** The client uses the returned JWT to connect to wss://socket.theablemind.com:3000. Token expires in 1 hour.
+Bearer required per `html/api.php` (JWT or static `BEARER_TOKEN` from `html/api/api.json`). This script does **not** require the bearer to match the `user_reference_id`; callers must align them at the application layer.
 
-**Parameters:**
+## Request Parameters
 
-| **Name**          | **Type** | **Required** | **Description**               |
-|-------------------|----------|--------------|-------------------------------|
-| user_reference_id | Integer  | Yes          | User ID (reservation users) requesting the token. |
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_reference_id | integer | Yes | — | Cast with `(int)`; values `<= 0` yield failure. |
+| user_lang | string | No | en | Loaded for `session_error` includes on failure paths only. |
 
-**Success Schema (200 OK):**
+## Success Response
 
 ```json
 {
-"status": true,
-"message": "JWT successful",
-"data": {
-"jwt": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
-}
+  "status": true,
+  "message": "JWT successful",
+  "data": {
+    "jwt": "<string>"
+  }
 }
 ```
+
+## Failure Response
+
+Typical missing user:
+
+```json
+{
+  "status": false,
+  "message": "User not provided",
+  "data": []
+}
+```
+
+Other failures use the same envelope; `message` is the exception message text.
+
+## Notes
+
+- WebSocket URL construction is client-side; token is passed as `socket/?token=<jwt>` per mobile client.
+- JWT `id` claim is the numeric reservation `user_id` passed as `user_reference_id`.
 
 ## 30. Get Complete YSAM Post
 
@@ -1308,16 +1414,44 @@ Retrieves the full, un-truncated content of a specific "Your Story and Mine" (YS
 
 **Success Schema (200 OK):**
 
+`ysam_show_modal_story` returns a **JSON string**. `get_complete_ysam_post.php` sets:
+
 ```json
 {
-"code": "1",
-"data": {
-"ysam_id": "987",
-"title": "My Journey",
-"content": "Full article content..."
-}
+  "code": "1",
+  "data": "<string: inner JSON from ysam_show_modal_story — clients must json-decode this string to obtain the object below>"
 }
 ```
+
+After decoding **`data`**, success object fields (`functions.php` `ysam_show_modal_story`, app branch) are:
+
+| Field | Type | Notes |
+|---|---|---|
+| code | string | Inner **`"1"`** (duplicates outer meaning). |
+| ysam_id | integer | |
+| ysam_user_story_title | string | HTML-escaped, newlines → `<br>`. |
+| ysam_user_name | string | HTML-escaped decrypted name. |
+| ysam_user_story_submitted_date | string | HTML-escaped elapsed string. |
+| story | string | HTML-escaped body with `<br>` for newlines. |
+| ysam_user_id | integer | Author id. |
+| hashtags | array | `{ id: int, value: string }` entries, values HTML-escaped. |
+| ysam_collection_type_name | string | |
+| following | string | `reservation_user_ysam_following_active` or **`"N"`**. |
+| connected_to_user | string | Connect approved **`"Y"`** / **`"N"`**. |
+| estimated_read_time | string | |
+| request_connect_to_user_message | string | Localized template with author name. |
+| connection_confirm_button | string | Constant. |
+| connection_cancel_button | string | Constant. |
+| tam_connections_conversation_active | string | **`"Y"`** / **`"N"`** from `check_existing_ysam_conversation`. |
+| story_language | string | Detected post language. |
+| show_translate_option | string | **`"Y"`** or **`"N"`**. |
+| story_translated_title | string | Empty when same language as UI. |
+| story_translated_body | string | Empty when same language. |
+| translate_label_text | string | |
+| original_label_text | string | |
+
+Failure inner JSON: `{"code":"0","message":"..."}`.
+
 
 ## 31. Google Audio Transcribe (Fallback)
 
@@ -1342,22 +1476,22 @@ Converts incoming server-side audio files to FLAC format and transcribes them di
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/google_audio_transcribe \
 -H "Authorization: Bearer <TOKEN>" \
 -H "Content-Type: application/json" \
 -d '{"audio_message": "/server/path/audio.mp3", "user_lang": "en"}'
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": "1",
 "language": "en-US",
 "transcript": "I am feeling much better today."
 }
-```
+
 
 ## 32. List YSAM Posts
 
@@ -1386,340 +1520,852 @@ Fetches a paginated feed of YSAM posts with optional filters for hashtags, categ
 
 **Success Schema (200 OK):**
 
+`get_all_ysam_posts` with `$redirect_from_app === true` returns an array `["code" => 1, "count" => <int>, "data" => <array of post objects>]`. `list_ysam_posts.php` wraps again:
+
 ```json
 {
-"code": "1",
-"message": "",
-"data": {
-"posts": [
-{ "ysam_id": "101", "title": "Coping with Stress" }
-],
-"total_pages": 5
-}
+  "code": "1",
+  "message": "",
+  "data": {
+    "code": 1,
+    "count": 0,
+    "data": []
+  }
 }
 ```
+
+So **`data.data`** is the post array; **`data.count`** is total rows for the query (before pagination). When there are no rows, inner return is `{"code":1,"count":0,"message":"<localized string>}` (still `code` integer **1** in PHP array for that branch). The outer wrapper still uses `"code":"1"` string and puts the whole inner array under `data`.
+
+### `data.data[]` post object (`get_all_ysam_posts`, app branch)
+
+When `user_reference_id` is non-empty (typical app call), each element includes at least:
+
+| Field | Type | Notes |
+|---|---|---|
+| ysam_id | mixed | Post id. |
+| ysam_user_story_title | string | Truncated title (≤40 chars + `...`). |
+| author_user_reference_id | int | Same as `ysam_user_id` in PHP. |
+| ysam_user_name | string | Decrypted display name. |
+| ysam_user_story_submitted_date | string | Humanized elapsed time (`time_elapsed_string` with lang). |
+| story | string | Stripped/truncated body HTML for list. |
+| read_more | string | **`"Y"`** or **`"N"`**. |
+| narration | string | Absolute or relative URL to narration audio, or **""**. |
+| hashtags | array | List of `{ "id", "value" }` when `redirect_from_app`; else raw string from SQL. |
+| ysam_user_id | int | Author reservation id. |
+| following | string | Follow flag / id from SQL, or **""** if no viewer id. |
+| connected | string | Connect approved flag, or **""**. |
+| ysam_published_status | mixed | |
+| ysam_collection_type_name | string | |
+| ysam_collection_type_id | mixed | Special handling when `1006` for read-time / body rules. |
+| estimated_read_time | string | Localized minute string when `redirect_from_app`. |
+| ysam_conversation_active | string | From `check_existing_ysam_conversation` or **""** / **"N"`**. |
+| post_language | string | `ysam_detected_language`. |
+| podcast_duration | string | Formatted duration or **""**. |
+| language | string | User/content language code. |
+| podcast_language | string | |
+| podcast_language_text | string | May be unset if no podcast language. |
+| translate_label_text | string | Empty when same language. |
+| original_label_text | string | Empty when same language. |
+| original_story | string | Empty when same language. |
+| original_title | string | Empty when same language. |
+
+When `user_reference_id` is empty, `following` / `connected` / `ysam_conversation_active` differ (see `html/functions.php` around the two `ysam_titles[]` branches).
+
 
 ## 33. Connections Block User
 
-Blocks a user within the TAM Connections module, preventing further messaging between the two parties.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/connections_block_user
+```text
+POST /api.php/v1/connections_block_user
+```
 
-- **Method:** POST
+## Purpose
 
-- **Rate Limit:** 40 requests / minute
+Deactivates the 1:1 TAM Connections conversation between two reservation users when plan rules allow blocking.
 
-**Parameters:**
+## Authentication
 
-| **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| blocking_user_id | String | Yes | The ID of the user performing the block. |
-| blocked_user_id | String | Yes | The ID of the user being blocked. |
+Bearer required (`html/api.php`). `auth_user_id` is not read by this script.
 
-**Success Schema (200 OK):**
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| blocked_user_id | string | Yes | — | Escaped with `mysqli_real_escape_string`; cast to `(int)` inside `tam_connections_block_user`. |
+| blocking_user_id | string | Yes | — | Same as above. |
+| user_lang | string | No | en | Selects `language_config/ysam_conversation/common/config_ysam_{user_lang}.php` inside helper. |
+
+## Success Response
+
+`tam_connections_block_user` returns `status` **true**, `message` from localized constant `user_has_been_blocked_text`, and `data` containing at least:
 
 ```json
 {
-"status": true,
-"message": "User blocked successfully",
-"data": []
+  "status": true,
+  "message": "<localized string>",
+  "data": {
+    "conversation_id": 0,
+    "blocked_user_id": 0
+  }
 }
 ```
+
+### `data` object (success)
+
+| Field | Type | Notes |
+|---|---|---|
+| conversation_id | integer | `tam_conversations_master_id` updated row. |
+| blocked_user_id | integer | The blocked party’s user id. |
+
+## Failure Response
+
+Representative shapes (all use `status` **false**, `data` **[]**, `message` localized constant or `processing_error`):
+
+| Condition | `message` source (constant name) |
+|---|---|
+| Invalid user ids | `processing_error` |
+| No conversation row for derived `tam_room_{min}_{max}` room | `error_blocking_user_text` |
+| Plan summary error | `user_plan_insufficient_for_block` |
+| Short / trial plan (`plan_duration` contains `day`) | `user_plan_insufficient_for_block` |
+| Update affects 0 rows | `error_blocking_user_text` |
+| Throwable in helper | `processing_error` |
+
+Wrapper catch (e.g. missing user id before helper): `message` is exception string such as `User Id is not specified`. Invalid JSON from helper yields `message` **`invalid_request`**.
+
+## Notes
+
+- Room name inside helper: `tam_room_{min(blocking,blocked)}_{max(blocking,blocked)}`.
+
 
 ## 34. Connections Check Consent
 
-Verifies if a user has signed the active community guidelines/consent for Connections.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/check_connections_consent
+```text
+POST /api.php/v1/check_connections_consent
+```
 
-- **Method:** POST
+## Purpose
 
-- **Rate Limit:** 40 requests / minute
+Determines whether the user must accept the current Connections guideline text for their language.
 
-**Parameters:**
+## Authentication
 
-| **Name** | **Type** | **Required** | **Description** |
-|----------|----------|--------------|-----------------|
-| user_id  | Integer  | Yes          | User ID (reservation users).        |
+Bearer required. Script does not read `auth_user_id`.
 
-**Success Schema (200 OK - Consent Required):**
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_id | integer | Conditional | 0 | If empty and `user_reference_id` is set, `user_id` is copied from `user_reference_id` before cast. |
+| user_reference_id | integer/string | Conditional | — | Alias copied into `user_id` when `user_id` empty. |
+| user_lang | string | No | en | Must exist as `language_config/ysam_conversation/common/config_ysam_{user_lang}.php` and matching `config_ysam_{user_lang}.php` (both required). |
+
+## Success Response
+
+**Consent not required (row exists and `tam_connections_consent_expiry_date` ≥ server date `Y-m-d`):**
 
 ```json
 {
-"status": true,
-"message": "consent_required",
-"data": {
-"required": true,
-"guidelines": {
-"title": "Community Guidelines",
-"consent_text": "I Agree"
-}
-}
+  "status": true,
+  "message": "success",
+  "code": "1",
+  "data": {
+    "required": false
+  }
 }
 ```
+
+**Consent required (no row, expired, or first-time):**
+
+```json
+{
+  "status": true,
+  "message": "consent_required",
+  "code": "2",
+  "text": { },
+  "consent_string": "<imploded constant text>",
+  "data": {
+    "required": true,
+    "guidelines": { }
+  }
+}
+```
+
+`text` and `data.guidelines` are the same object. Object `guidelines` (and root `text` when present) contains exactly these keys from `generate_connection_guidelines` in `tam_connections_check_consent.php`:
+
+| Field | Type | Notes |
+|---|---|---|
+| title | string | Localized constant `title`. |
+| introduction_1 | string | Constant `introduction_1`. |
+| introduction_2 | string | Constant `introduction_2`. |
+| introduction_guidelines | string | Constant `introduction_guidelines`. |
+| consent_line_1 | string | Constant `consent_line_1`. |
+| consent_line_2 | string | Constant `consent_line_2`. |
+| consent_line_3 | string | `{XXXX}` replaced by `ysam_messages_limit_per_day`. |
+| consent_line_4 | string | Constant `consent_line_4`. |
+| consent_line_5 | string | Constant `consent_line_5`. |
+| consent_line_6 | string | Constant `consent_line_6`. |
+| consent_line_7 | string | Constant `consent_line_7`. |
+| consent_line_8 | string | Always **""**. |
+| consent_line_9 | string | Always **""**. |
+| consent_final | string | Constant `consent_final`. |
+| consent_text | string | Constant `consent_button`. |
+| cancel_text | string | Constant `reject_button`. |
+
+`consent_string` is the server-side canonical text: `implode('~~', [title, introduction_1, …, consent_final])` (excludes `consent_text` / `cancel_text`).
+
+## Failure Response
+
+**Invalid user id (`user_id` ≤ 0 after resolution):**
+
+```json
+{
+  "status": false,
+  "message": "<generic_error constant>",
+  "code": "3",
+  "data": []
+}
+```
+
+**Throwable in script:** `status` **false**, `message` from `high_traffic` / `technical_issue` / `generic_error` constants depending on mysqli error code; `data` **[]** (no `code` field on this path in PHP).
+
 
 ## 35. Connections Check Usage
 
-Ensures the user has not exceeded their daily allowed connection interactions based on their plan limits.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/connections_check_usage
+```text
+POST /api.php/v1/connections_check_usage
+```
 
-- **Method:** POST
+## Purpose
 
-- **Rate Limit:** 40 requests / minute
+Returns whether the reservation user may send more TAM Connections messages today (plus staff bypass).
 
-**Parameters:**
+## Authentication
 
-| **Name**          | **Type** | **Required** | **Description** |
-|-------------------|----------|--------------|-----------------|
-| user_reference_id | String   | Yes          | User ID (reservation users).        |
+Bearer required. Script does not read `auth_user_id`.
 
-**Success Schema (200 OK):**
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_reference_id | string | Yes | — | Passed through `mysqli_real_escape_string` then cast `(int)` in `check_usage_tam_connections`. |
+| user_lang | string | No | en | Restricted to the same allow-list array as other Connections v1 scripts; invalid values become `en`. |
+
+## Success Response
 
 ```json
 {
-"status": true,
-"message": "",
-"data": { "allowed": true }
+  "status": true,
+  "message": "success",
+  "data": {
+    "allowed": true
+  }
 }
 ```
+
+## Failure Response
+
+```json
+{
+  "status": false,
+  "message": "<localized string>",
+  "data": {
+    "allowed": false
+  }
+}
+```
+
+`message` values from `check_usage_tam_connections` include localized `processing_error`, `not_subscribed`, `exceeded_usage` (with `{XXXX}` replaced by `ysam_messages_limit_per_day`), or `processing_error` on exception.
+
+## Notes
+
+- If PHP session flags `user_is_admin`, `user_is_manager`, `user_is_counsellor`, `user_is_ops_lead`, or `user_is_receptionist` are set, the helper returns `allowed` **true** without quota checks.
+
 
 ## 36. Connections Dashboard
 
-Loads the primary inbox view for TAM Connections, including active 1-1 chats, joined groups, unread counts, and groups available to join.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/user_conversations_dashboard
+```text
+POST /api.php/v1/user_conversations_dashboard
+```
 
-- **Method:** POST
+## Purpose
 
-- **Rate Limit:** 40 requests / minute
+Returns merged 1:1 and group inbox rows, unread total, discoverable groups, and localized tab labels.
 
-**Parameters:**
+## Authentication
 
-| **Name**          | **Type** | **Required** | **Description** |
-|-------------------|----------|--------------|-----------------|
-| user_reference_id | String   | Yes          | User ID (reservation users).        |
+Bearer required. Script does not read `auth_user_id`.
 
-**Success Schema (200 OK):**
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_reference_id | string | Yes | — | Escaped then passed to `list_ysam_user_conversations`; empty yields `generic_error` envelope. |
+| user_lang | string | No | en | Restricted to mobile allow-list; invalid → `en`. |
+
+## Success Response
+
+### Raw JSON from `list_ysam_user_conversations` (before `tam_connections_dashboard.php`)
+
+Emitted as a **JSON string** then `json_decode`d. On success, root keys are:
+
+| Field | Type | Notes |
+|---|---|---|
+| code | string | `"1"` success, `"0"` failure. |
+| conversations | array | Merged 1:1 + group rows (max 100). See table below. |
+| total_unread | integer | Sum of `unread_messages` for **active** conversations, de-duplicated by `connection_type` + `id`. |
+| discover_groups | array | Up to 100 groups user may join. See table below. |
+| tabs | object | Keys `conversations`, `discover` — localized UI tab titles from constants. |
+| show_discover_tab | boolean | `true` when `discover_groups` is non-empty. |
+| dashboard_message | string | Localized heading from `connections_dashboard_heading` or `no_connections_dashboard_heading`. |
+
+### Wrapped JSON from `tam_connections_dashboard.php`
+
+When `code` is present, the script **replaces** the whole output with:
+
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `code == "1"`. |
+| message | string | `$output["text"] ?? ""` — usually **empty** on success (inner JSON has no `text`). |
+| data | object | **Only** three keys are forwarded: `conversations`, `total_unread`, `discover_groups`. |
+
+**Dropped by the wrapper (present only in raw inner JSON):** `tabs`, `show_discover_tab`, `dashboard_message`, inner `code`. Clients that need those fields must read the inner payload before wrapping or extend `tam_connections_dashboard.php`.
 
 ```json
 {
-"status": true,
-"message": "Success",
-"data": {
-"conversations": [],
-"total_unread": 3,
-"discover_groups": []
-}
+  "status": true,
+  "message": "",
+  "data": {
+    "conversations": [],
+    "total_unread": 0,
+    "discover_groups": []
+  }
 }
 ```
+
+### `data.conversations[]` row (`list_ysam_user_conversations`)
+
+Built in `html/functions_ysam.php`. `connection_type` **`S`** = single chat, **`G`** = group.
+
+| Field | Type | S | G | Notes |
+|---|---|:---:|:---:|---|
+| connection_type | string | ✓ | ✓ | `"S"` or `"G"`. |
+| conversation_master_id | integer | ✓ | ✓ | For **S**: `tam_conversation_summary.conversation_id`. For **G**: `tam_connections_groups.tam_connections_group_id`. |
+| conversation_active | boolean | ✓ | ✓ | From summary / group `active` flag (`"Y"` → true). |
+| blocked_by_current_user | boolean | ✓ | ✓ | Single: inactive conversation and `inactive_by` equals current user. Group: always false in loop. |
+| room | string | ✓ | ✓ | Room name (`tam_conversation_summary.room_name` or group room name). |
+| following_user_id | integer \| null | ✓ | — | Other user id in 1:1; **null** for groups. |
+| connection_group_name | string \| null | — | ✓ | Group display name; **null** for single. |
+| connection_description | string \| null | — | ✓ | Group description; **null** for single. |
+| subscribed_to_group | boolean | ✓ | ✓ | Always **true** when `connection_type === "G"`; always **false** when `"S"` (literal in PHP). |
+| user_name | string | ✓ | ✓ | Single: decrypted peer `user_ysam_name` / `user_name` after batch map. Group: remains **""**. |
+| last_message | string | ✓ | ✓ | Prefix **`You: `** when last message user is current user. Body from `buildMessagePreview`; empty text may become localized `connections_system_start_conversation`. |
+| display_date | string | ✓ | ✓ | After hydration: `formatDisplayDateWithTZ` using **viewing** user’s timezone (not raw DB string). |
+| unread_messages | integer | ✓ | ✓ | From summary / `tam_group_unread`. |
+| target_language | string | ✓ | ✓ | Currently hard-coded **`"en"`** in PHP. |
+| last_message_type | string | ✓ | ✓ | e.g. `text`, `image`, from summary. |
+
+### `data.discover_groups[]` row
+
+| Field | Type | Notes |
+|---|---|---|
+| group_id | integer | `tam_connections_group_id`. |
+| room | string | `tam_connections_group_room_name`. |
+| connection_group_name | string | Group name. |
+| connection_description | string | Group description. |
+| member_count | integer | Current member count. |
+| group_subscribed | string | Literal **`"N"`** (user is not in this list if already subscribed). |
+
+## Failure Response
+
+Inner JSON uses `"code": "0"` with root key **`error`** (no `text`). The dashboard wrapper still maps `status` to `(code == "1")` and `message` to `$output["text"] ?? ""`, so this failure returns **`message` as an empty string** with `data` fields defaulting to empty arrays / zero.
+
+## Notes
+
+- Unread is incremented only for rows where `conversation_active` is true and each `connection_type_id` is seen once per response build.
+- After building the list, PHP runs `UPDATE tam_connections_groups_subscriptions SET tam_connections_groups_user_last_connected = NOW()` for the current user (non-blocking side effect).
+
 
 ## 37. Connections Get Messages
 
-Fetches conversation history in batches, utilizing sequence numbers for ordering, and generates secure URLs for attachments.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/get_connection_messages
+```text
+POST /api.php/v1/get_connection_messages
+```
 
-- **Method:** POST
+## Purpose
 
-- **Pagination Rules:** Cursor-based pagination using lastSeq. Pass the highest message_sequence from the previous response to get the next batch. Returns up to 50 messages per call.
+Returns up to **50** single-chat rows for one room (content field **not** decrypted in this endpoint), either newer than `lastSeq` or strictly older than `beforeSeq`.
 
-**Parameters:**
+## Authentication
 
-| **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| auth_user_id | Integer | Yes | User ID (reservation users) (fallback to user_id). |
-| room_name | String | Yes | The unique identifier for the chat room. |
-| lastSeq | Integer | No | The sequence ID of the last fetched message (default 0). |
+Bearer required. User id resolution: `$_REQUEST['auth_user_id']` if set (JWT path in `html/api.php`), else `$_POST['user_id']`.
 
-**Success Schema (200 OK):**
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| room_name | string | Yes | — | Empty with empty user → `missing_fields`. |
+| user_id | string/int | Conditional | — | Required when JWT does not populate `auth_user_id`. |
+| lastSeq | mixed | No | 0 | Used only when `beforeSeq` is **0**; bound as integer for SQL `message_sequence > ?`. |
+| beforeSeq | integer | No | 0 | When `> 0`, selects rows with `message_sequence < ?` ordered DESC then reversed; fetches `pageLimit+1` to set `has_more_older`. |
+| user_lang | string | No | en | Loads `language_config/ysam_conversation/config_ysam_{user_lang}.php` only (for `missing_fields` / `conversation_not_found` / `technical_issue` constants). |
+
+## Success Response
 
 ```json
 {
-"status": true,
-"message": "success",
-"data": {
-"messages": [
-{
-"message_sequence": 1,
-"server_seq": 1,
-"client_message_id": "uuid-123",
-"sender_id": 123,
-"message_text": "Hello!",
-"message_type": "text",
-"attachment_url": null,
-"created_at": "2026-05-08 10:00:00",
-"is_mine": true
-}
-]
-}
+  "status": true,
+  "message": "success",
+  "data": {
+    "messages": [
+      {
+        "message_sequence": 1,
+        "server_seq": 1,
+        "client_message_id": null,
+        "sender_id": 1,
+        "message_text": "<ciphertext from DB column tam_conversations_message_original; not decrypted in this endpoint>",
+        "message_type": "text",
+        "attachment_url": null,
+        "created_at": "YYYY-MM-DD HH:MM:SS",
+        "is_mine": true
+      }
+    ],
+    "has_more_older": false
+  }
 }
 ```
+
+### `data.messages[]` row (`tam_connections_get_messages.php`)
+
+| Field | Type | Notes |
+|---|---|---|
+| message_sequence | integer | DB `message_sequence`. |
+| server_seq | integer | Same as `message_sequence`. |
+| client_message_id | string \| null | From DB. |
+| sender_id | integer | `tam_conversations_user_id`. |
+| message_text | string | **Ciphertext** from `tam_conversations_message_original` (not decrypted here). |
+| message_type | string | From DB; defaults to `text` if null. |
+| attachment_url | string \| null | Signed URL when attachment filename column set. |
+| created_at | string | `tam_conversations_message_date`. |
+| is_mine | boolean | `sender_id` equals requesting user. |
+
+`attachment_url` is built by the local `generateAttachmentUrl` in `tam_connections_get_messages.php`: HMAC-SHA256 over `"{filename}|{exp}"` with `TAM_ATTACHMENT_SECRET`, URL prefix `TAM_BASE_URL + "/api.php?get_attachment=1&file=…&exp=…&sig=…"`. This differs from `functions_ysam.php::generateAttachmentUrl` (uses `hash('sha256', filename)` in the signed payload and `/api.php/v1/get_attachment?`). `html/api.php` attachment handling expects the **hashed-filename** variant and a request path containing `api.php/v1/`; clients must treat URL compatibility as deployment-specific.
+
+## Failure Response
+
+| Case | Body |
+|---|---|
+| Missing `room_name` or user id | `{"status":false,"message":"<missing_fields>","data":[]}` |
+| Unknown room | `{"status":false,"message":"<conversation_not_found>","data":[]}` |
+| DB Throwable | `{"status":false,"message":"<technical_issue>","data":[]}` |
+
+## Notes
+
+- `message_text` in this endpoint is **still encrypted at rest** in DB; PHP selects column `tam_conversations_message_original` into the array key `message_text` without decrypting (runtime returns ciphertext strings for content).
+
 
 ## 38. Connections Group Subscribe
 
-Safely subscribes a user to a group if they meet the Open, Corporate, or Subscription-based access rules.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/connections_group_subscribe
+```text
+POST /api.php/v1/connections_group_subscribe
+```
 
-- **Method:** POST
+## Purpose
 
-- **Rate Limit:** 40 requests / minute
+Subscribes a user to a group when access rules pass; may increment `member_count` once per net-new subscription.
 
-- **Security Notes:** Uses FOR UPDATE row-locking to ensure atomic member count increments.
+## Authentication
 
-**Parameters:**
+Bearer required. Script does not read `auth_user_id`.
 
-| **Name** | **Type** | **Required** | **Description**            |
-|----------|----------|--------------|----------------------------|
-| user_id  | Integer  | Yes          | User ID (reservation users) joining the group. |
-| group_id | Integer  | Yes          | Group ID.                  |
+## Request Parameters
 
-**Success Schema (200 OK):**
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_id | integer | Yes | — | Cast `(int)`; falsy with `group_id` yields `error_subscribing` constant message. |
+| group_id | integer | Yes | — | Cast `(int)`. |
+| user_lang | string | No | en | Loads `html/language_config/ysam_conversation/common/config_ysam_{user_lang}.php`. |
+
+## Success Response
 
 ```json
 {
-"status": true,
-"message": "Successfully subscribed to the group",
-"data": []
+  "status": true,
+  "message": "<success_subscribing constant>",
+  "data": []
 }
 ```
+
+## Failure Response
+
+| Case | Body |
+|---|---|
+| Access SQL returns 0 rows | `{"status":false,"message":"<not_allowed_to_join_group>","data":[]}` |
+| Throwable | `{"status":false,"message":"<high_traffic|technical_issue|exception text>","data":[]}` |
+
+## Notes
+
+- Uses `begin_transaction` / `commit_transaction` / `rollback_transaction` with `FOR UPDATE` on the group row.
+
 
 ## 39. Connections Group Unsubscribe
 
-Safely removes a user from a group, decrementing the active member count and clearing their unread state history.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/connections_group_unsubscribe
+```text
+POST /api.php/v1/connections_group_unsubscribe
+```
 
-- **Method:** POST
+## Purpose
 
-**Parameters:**
+Marks subscription unsubscribed, decrements member count when still subscribed, deletes `tam_group_unread` row.
 
-| **Name** | **Type** | **Required** | **Description**            |
-|----------|----------|--------------|----------------------------|
-| user_id  | Integer  | Yes          | User ID (reservation users) leaving the group. |
-| group_id | Integer  | Yes          | Group ID.                  |
+## Authentication
 
-**Success Schema (200 OK):**
+Bearer required.
+
+## Request Parameters
+
+Same as subscribe: `user_id`, `group_id`, optional `user_lang` for error constants.
+
+## Success Response
 
 ```json
 {
-"status": true,
-"message": "Successfully unsubscribed",
-"data": []
+  "status": true,
+  "message": "<success_unsubscribing constant>",
+  "data": []
 }
 ```
+
+## Failure Response
+
+Non-POST, missing ids, missing group row, or exception paths return `status` **false** with localized `invalid_request`, `error_unsubscribing`, or `technical_issue` / exception message.
+
+## Notes
+
+- Successful JSON is emitted **once** from the script’s `finally` block (`$output` array).
+
 
 ## 40. Connections Register Consent
 
-Records a user's formal acceptance of the connection guidelines and calculates their expiry period (validity days).
+## Endpoint
 
-- **Endpoint:** /api.php/v1/register_connections_consent
+```text
+POST /api.php/v1/register_connections_consent
+```
 
-- **Method:** POST
+## Purpose
 
-**Parameters:**
+Inserts (or no-ops on duplicate) a `tam_connections_consent` row with the canonical consent string for the user’s language.
 
-| **Name** | **Type** | **Required** | **Description**            |
-|----------|----------|--------------|----------------------------|
-| user_id  | Integer  | Yes          | User ID (reservation users) providing consent. |
+## Authentication
 
-**Success Schema (200 OK):**
+Bearer required.
+
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_id | integer | Conditional | 0 | Copied from `user_reference_id` when `user_id` empty. |
+| user_reference_id | mixed | Conditional | — | Alias for `user_id`. |
+| user_lang | string | No | en | Loads `common/config_ysam_{user_lang}.php` only. |
+
+## Success Response
 
 ```json
 {
-"status": true,
-"message": "Consent registered successfully",
-"data": []
+  "status": true,
+  "code": "1",
+  "text": "<consent_registered constant>",
+  "message": "<consent_registered constant>",
+  "data": []
 }
 ```
+
+## Failure Response
+
+Invalid user:
+
+```json
+{
+  "status": false,
+  "code": "0",
+  "text": "<generic_error constant>",
+  "message": "<generic_error constant>",
+  "data": []
+}
+```
+
+Throwable wrapper: `status` **false**, `message` localized, `data` **[]** (no `code` / `text` on that path).
+
+## Notes
+
+- Consent string is `implode('~~', …)` of the localized title, introductions, lines 1–7, and `consent_final` (see script).
+
 
 ## 41. Connections Send Message
 
-A robust controller for sending messages in 1-on-1 or Group chats. Performs safety classifications via LLM (checking for self-harm, external links) and automatically translates cross-language 1-on-1 chats.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/connections_send_message
-
-- **Method:** POST
-
-- **Content-Type:** multipart/form-data
-
-- **Rate Limit:** 40 requests / minute
-
-- **Security Notes:** Implements strict Mime-Type checking via finfo_file for file uploads. Max size is regulated by CONNECTIONS_MAX_ATTACHMENT_SIZE. Generates image thumbnails automatically.
-
-**Parameters:**
-
-| **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| sender_reference_id | String | Yes | ID of the sender. |
-| recipient_reference_id | Integer | Cond. | ID of the recipient (required if room_type is 'S'). |
-| room_name | String | Yes | The unique identifier for the chat room. |
-| room_type | String | Yes | 'S' (Single/1-1) or 'G' (Group). |
-| message | String | Cond. | The text message content (required if no attachment). |
-| attachment | File | Cond. | Binary file attachment (required if no message). |
-| client_message_id | String | No | Local ID to prevent duplicate insertions. |
-| reply_to_message_id | Integer | No | ID of the message being replied to. |
-
-**cURL Example (Multipart Upload):**
-
-```bash
-curl -X POST https://[BASE_URL]/api.php/v1/connections_send_message \
--H "Authorization: Bearer <TOKEN>" \
--H "X-Firebase-AppCheck: <APPCHECK_TOKEN>" \
--F "sender_reference_id=123" \
--F "room_name=room-uuid" \
--F "room_type=G" \
--F "message=Check out this file!" \
--F "attachment=@/path/to/local/image.jpg"
+```text
+POST /api.php/v1/connections_send_message
 ```
 
-**Success Schema (200 OK):**
+## Purpose
+
+Classifies text via `_shared_tam_classify.php` / `classifyUserText`, enforces plan and daily send limits, optionally handles multipart attachment storage, encrypts message bodies with global `$ncrypt`, updates summary tables, and returns send metadata.
+
+## Authentication
+
+Bearer required. Sender id: `$_REQUEST['auth_user_id']` if set, else `$_POST['sender_reference_id']` (empty string allowed and fails later validation).
+
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_lang | string | No | en | First gated by `app_supported_languages`; later re-read escaped from POST. |
+| client_message_id | string | null | null | Escaped; stored on insert; duplicate DB error **1062** triggers idempotent success branch when the duplicate is on this id. |
+| sender_reference_id | string/int | Conditional | "" | Used only when `auth_user_id` absent. |
+| recipient_reference_id | integer | Conditional | 0 | Required when `room_type` is **S** (after trim/empty checks). |
+| message | string | Conditional | "" | Trimmed; may be empty only when `attachment` file upload present. |
+| room_name | string | Yes | — | Escaped. |
+| room_type | string | No | S | Uppercased to `S` or `G`. |
+| reply_to_message_id | integer | null | null | `0` normalized to `null`. |
+| attachment | file | Conditional | — | `$_FILES['attachment']`; requires `UPLOAD_ERR_OK`. |
+
+Parameters **not** read by this PHP file include `timestamp_browser`, `reply_to_content`, `reply_to_sender` (any Laravel-only aliases are not upstream fields here).
+
+## Supported Attachment MIME Types
+
+Validated with `finfo_file` MIME (not extension). Max size `CONNECTIONS_MAX_ATTACHMENT_SIZE` bytes; oversize uses localized `invalid_attachment` with `(XXXX)` replaced by `CONNECTIONS_MAX_ATTACHMENT_SIZE_MB`. Image types are validated with `getimagesize`. Stored under `CONNECTIONS_ATTACHMENT_FOLDER` with UUID filename; JPEG/PNG/WebP receive JPEG thumbnail in `CONNECTIONS_ATTACHMENT_FOLDER_THUMB` as `thumb_{uuid}.jpg`.
+
+| MIME | Stored `message_type` |
+|---|---|
+| application/pdf | file |
+| image/jpeg, image/png, image/webp | image |
+| audio/mpeg, audio/wav, audio/ogg, audio/webm | audio |
+
+## Success Response
+
+**Single chat (`room_type` **S**), normal insert:**
 
 ```json
 {
-"status": true,
-"message": "success",
-"data": {
-"text": "Check out this file!",
-"message_sequence": 42,
-"client_message_id": "local-uuid-123",
-"attachment_url": "https://[BASE_URL]/api.php?get_attachment=1&...",
-"detected_language": "en"
-}
+  "status": true,
+  "message": "success",
+  "data": {
+    "text": "<plaintext sender message>",
+    "message_sequence": 1,
+    "client_message_id": null,
+    "attachment_url": null,
+    "attachment_thumb_url": null,
+    "detected_language": "en",
+    "special_message": "",
+    "sender_date_display": "Mon, 01 Jan 2026 (03:45 pm)",
+    "recipient_text": "<translated or original>",
+    "recipient_date_display": "Mon, 01 Jan 2026 (03:45 pm)"
+  }
 }
 ```
-** Note: **
-- Attachment availability may depend on the user's active subscription plan and THoT attachment permissions.
+
+`special_message` is non-empty when classifier returns `link` = **Y** (localized `link-provided` stripped of brackets).
+
+**Group chat (`room_type` **G**), success:** same envelope except `recipient_text` duplicates plaintext `message` and both date displays use sender timezone formatting path in PHP.
+
+**Idempotent duplicate (`client_message_id` unique violation):**
+
+```json
+{
+  "status": true,
+  "message": "duplicate",
+  "data": {
+    "message_sequence": 0
+  }
+}
+```
+
+(`message_sequence` read from existing row, may be null if lookup fails.)
+
+### `data` fields — success (`message` **success**, single or group)
+
+| Field | Type | S | G | Notes |
+|---|---|:---:|:---:|---|
+| text | string | ✓ | ✓ | Plain sender message text (not DB ciphertext in response). |
+| message_sequence | integer | ✓ | ✓ | Allocated sequence. |
+| client_message_id | string \| null | ✓ | ✓ | Echo of request id. |
+| attachment_url | string \| null | ✓ | ✓ | Signed URL from `generateAttachmentUrl` in send script, or null. |
+| attachment_thumb_url | string \| null | ✓ | ✓ | Thumbnail URL for images, else null. |
+| detected_language | string | ✓ | ✓ | Classifier language code. |
+| special_message | string | ✓ | ✓ | Non-empty when classifier link flag **Y**. |
+| sender_date_display | string | ✓ | ✓ | Formatted in sender’s timezone. |
+| recipient_text | string | ✓ | ✓ | Single: translated text for recipient; group: same as `text`. |
+| recipient_date_display | string | ✓ | ✓ | Single: recipient-local formatted string; group: same as sender side display. |
+
+### `data` fields — idempotent duplicate (`message` **duplicate**)
+
+| Field | Type | Notes |
+|---|---|---|
+| message_sequence | integer \| null | Loaded from existing row by `client_message_id`. |
+
+## Failure Response
+
+Envelope is always `{"status":false,"message":"<string>","data":[]}` except Throwable catch which may use localized high-traffic / technical strings from `session_error` includes.
+
+Non-exhaustive `message` values / sources:
+
+| Message | When |
+|---|---|
+| `processing_error` constant | Missing sender/recipient/room/room_type; missing user rows; classifier category code `"0"`; DB errors in non-duplicate paths. |
+| `not_subscribed` | Plan summary error. |
+| `tam_connections_not_available` / `tam_connections_trial_message` | Plan flag `tam_connections_enabled` != `Y`. |
+| `exceeded_usage` | Daily count > `ysam_messages_limit_per_day`. |
+| `classification_failed` | `classifyUserText` === false. |
+| Category error string | From classifier payload when code `"0"`. |
+| `not_subscribed_to_group` | Group sender not subscribed. |
+| `not_allowed_to_send_message` | Inactive group or access SQL returns 0 rows. |
+| `Empty message` | Exception before constants (empty text and no attachment). |
+| `Invalid_upload` / localized attachment errors | Upload validation failures. |
+| `File upload failed` | `move_uploaded_file` failure. |
+| Localized `invalid_image` | Thumbnail source decode failure. |
+
+## Notes
+
+- Single-chat inserts use `UPDATE tam_connections_conversation_master SET last_sequence = LAST_INSERT_ID(last_sequence+1)` to allocate `message_sequence`.
+- Message bodies stored encrypted (`tam_conversations_message_original`, `tam_conversations_message_remote`).
 
 ## 42. User Load Conversations
 
-Initializes and loads the metadata (participants, room validity) required to open a specific chat room.
+## Endpoint
 
-- **Endpoint:** /api.php/v1/user_conversations_load
+```text
+POST /api.php/v1/user_conversations_load
+```
 
-- **Method:** POST
+## Purpose
 
-**Parameters:**
+Loads up to **50** messages for a room via `app_tam_connections_messages` with `mode` **`initial`** and cursor **0**, plus conversation state and (for single chat) block UI strings.
 
-| **Name**          | **Type** | **Required** | **Description**              |
-|-------------------|----------|--------------|------------------------------|
-| user_reference_id | String   | Yes          | User ID (reservation users).                     |
-| connection_type   | String   | Yes          | 'S' (Single) or 'G' (Group). |
-| room_name         | String   | Yes          | The unique room identifier.  |
+## Authentication
 
-**Success Schema (200 OK):**
+Bearer required. Script does not read `auth_user_id`.
+
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| user_reference_id | string | Yes | — | Escaped; empty throws exception `"User Id or Connection type is not specified"`. |
+| connection_type | string | Yes | — | Must be **`S`** or **`G`** (other values throw same exception as empty user). |
+| room_name | string | Yes | — | Escaped; empty throws `"Room is empty"`. |
+| user_lang | string | No | en | Mobile allow-list normalization applies. |
+
+## Success Response
+
+On success `app_tam_connections_messages` returns a PHP array echoed as JSON:
 
 ```json
 {
-"status": true,
-"message": "Success",
-"data": {
-"room_name": "room-uuid",
-"participants": []
-}
+  "status": true,
+  "message": "success",
+  "data": {
+    "room_name": "",
+    "conversation_active": true,
+    "blocked_by_current_user": false,
+    "blocked_by_other_user": false,
+    "messages": [],
+    "current_user_name": "",
+    "user_timezone": "",
+    "user_gender": "",
+    "show_block_user_flag": "Y",
+    "block_user_button_text": "",
+    "block_user_confirmation_text": ""
+  }
 }
 ```
+
+### `data` room fields (`app_tam_connections_messages`)
+
+| Field | Type | S | G | Notes |
+|---|---|:---:|:---:|---|
+| room_name | string | ✓ | ✓ | Requested room name. |
+| conversation_active | boolean | ✓ | ✓ | `tam_conversations_active === 'Y'` for single; groups always **true** in code path. |
+| blocked_by_current_user | boolean | ✓ | ✓ | See dashboard logic for single; groups false. |
+| blocked_by_other_user | boolean | ✓ | ✓ | Inactive conversation and inactive user ≠ current user (single); groups false. |
+| messages | array | ✓ | ✓ | Up to 50 rows, ascending order after query (reversed from DESC). |
+| current_user_name | string | ✓ | ✓ | Decrypted YSAM display name. |
+| user_timezone | string | ✓ | ✓ | From `reservation_users.user_timezone` (decrypted). |
+| user_gender | string | ✓ | ✓ | Decrypted `sex` field. |
+| show_block_user_flag | string | ✓ | — | **`"Y"`** or **`"N"`** only when `connection_type === 'S'` and conversation active; always **`"N"`** for **G** in PHP return. |
+| block_user_button_text | string | ✓ | — | Localized constant when block UI shown; else **""**. |
+| block_user_confirmation_text | string | ✓ | — | Localized constant when block UI shown; else **""**. |
+
+### `data.messages[]` row (`format_message_payload`)
+
+**Single (`connection_type` = `S`):**
+
+| Field | Type | Notes |
+|---|---|---|
+| message_sequence | integer | |
+| server_seq | integer | Same as `message_sequence`. |
+| client_message_id | string \| null | From DB. |
+| sender_id | integer | |
+| message_text | string | Decrypted: sender sees original, recipient sees remote translated text. |
+| message_type | string | Default `text`. |
+| attachment_url | string \| null | From `functions_ysam::generateAttachmentUrl` after decrypting stored filename. |
+| attachment_thumb_url | string \| null | Thumbnail URL or null. |
+| created_at | string | Message timestamp. |
+| is_mine | boolean | |
+| translated | boolean | True when remote ciphertext differs from original ciphertext. |
+| original_message | string \| null | Plain original when `translated` is true; else **null**. |
+| reply_to | object \| null | See below. |
+
+**Group (`connection_type` = `G`):** same keys except **`client_message_id`** is always **null** in PHP; **`translated`**, **`original_message`** are **omitted** (single-only return shape); `message_text` is decrypted group message body.
+
+### `reply_to` object (`build_reply_block`, when non-null)
+
+| Field | Type | Notes |
+|---|---|---|
+| messageId | integer | Parent’s `reply_sequence` (message sequence of quoted message). |
+| content | string | HTML-escaped; placeholder HTML if missing. |
+| sender | integer | `reply_sender` user id. |
+| sender_name | string | HTML-escaped decrypted name or **`User`**. |
+| is_available | boolean | True when `reply_sequence` non-empty. |
+
+## Failure Response
+
+Exception paths from the wrapper:
+
+```json
+{
+  "status": false,
+  "message": "<exception text or technical_issue constant>",
+  "data": []
+}
+```
+
+Helper failure (`status` false from `app_tam_connections_messages`):
+
+```json
+{
+  "status": false,
+  "message": "<error_starting_conversation or other helper message>",
+  "data": []
+}
+```
+
+## Notes
+
+- Pagination `mode` / `cursor` are **not** exposed as POST inputs in `tam_user_load_conversations.php`; only the `initial` / `0` path is used. Older history uses `get_connection_messages` with `beforeSeq` / `lastSeq`.
 
 ## 43. Core Translate
 
@@ -1742,14 +2388,14 @@ Translates text automatically using an LLM. Detects the source language and upda
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "text": "Translated content here",
 "detected_language": "hi",
 "detected_language_full": "Hindi"
 }
-```
+
 
 ## 44. Upload Audio
 
@@ -1771,23 +2417,23 @@ Uploads audio files to the server. Supports standard multipart file uploads or B
 
 **cURL Example (Base64 Mode):**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/upload_audio \
 -H "Authorization: Bearer <TOKEN>" \
 -H "Content-Type: application/x-www-form-urlencoded" \
 -d "type=R" \
 -d "recordedAudio=UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AA..."
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "message": "file uploaded successfully. Please enter your authorization code and continue.",
 "file": "/server/path/audio_uuid.wav"
 }
-```
+
 
 ## 45. YSAM Add/Update Article
 
@@ -1812,13 +2458,13 @@ Creates a new post or edits an existing one in the "Your Story and Mine" (YSAM) 
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": true,
 "message": "Article successfully submitted",
 "data": { "ysam_id": 102 }
 }
-```
+
 
 ## 46. YSAM Connect to User
 
@@ -1842,23 +2488,23 @@ Sends a direct connection request (to initiate a 1-on-1 chat) to the author of a
 
 **cURL Example:**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/ysam_connect_to_user \
 -H "Authorization: Bearer <TOKEN>" \
 -H "X-Firebase-AppCheck: <APPCHECK_TOKEN>" \
 -d "user_reference_id=123" \
 -d "author_reference_id=456"
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": true,
 "message": "Connection request sent successfully",
 "data": []
 }
-```
+
 
 ## 47. YSAM Follow User
 
@@ -1879,13 +2525,13 @@ Toggles the "follow" status, allowing a user to subscribe to future posts from a
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": true,
 "message": "You are now following this user",
 "data": []
 }
-```
+
 
 ## 48. YSAM Get All Categories
 
@@ -1905,7 +2551,7 @@ Retrieves a complete list of categories available for YSAM posts, localized into
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": true,
 "message": "",
@@ -1914,7 +2560,7 @@ Retrieves a complete list of categories available for YSAM posts, localized into
 { "category_id": 2, "category_name": "Workplace Stress" }
 ]
 }
-```
+
 
 ## 49. YSAM Initialize Form
 
@@ -1935,7 +2581,7 @@ Aggregates metadata required to render the YSAM post creation form on the fronte
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": true,
 "message": "success",
@@ -1946,7 +2592,7 @@ Aggregates metadata required to render the YSAM post creation form on the fronte
 "user_can_post": true
 }
 }
-```
+
 
 ## 50. YSAM Report User Post
 
@@ -1969,13 +2615,55 @@ Flags a YSAM post for review by the moderation team. Records the user submitting
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "status": true,
 "message": "Post has been successfully reported.",
 "data": []
 }
-```
+
+
+## 50a. YSAM Review Message
+
+LLM-based **pre-send safety classification** for plain text (used by TAM Connections before connections_send_message, and available for other YSAM flows). Classifies user text and returns allow/block metadata.
+
+- **Legacy endpoint:** /api.php/v1/ysam_review_message
+- **Laravel route (mobile):** POST {APP_BASE}/ysam_review_message with **JSON** body (text, user_lang). Laravel forwards only those fields upstream.
+
+- **Method:** POST
+
+- **Rate Limit:** 40 requests / minute (authenticated + App Check)
+
+**Parameters (canonical):**
+
+| **Name** | **Type** | **Required** | **Description** |
+|----|----|----|----|
+| text | String | Yes | Message body to classify (trimmed server-side). |
+| user_lang | String | No | BCP-47 language code for localized classifier messages (default en). |
+
+**Success schema (200 OK, typical allow):**
+
+json
+{
+  "status": true,
+  "code": "1",
+  "text": "user message echo",
+  "category_check": {}
+}
+
+
+**Blocked / error (200 OK, typical):**
+
+json
+{
+  "status": false,
+  "code": "0",
+  "message": "blocked_or_error_key",
+  "category_check": {}
+}
+
+
+**Governance anchor:** heading ## 50a. YSAM Review Message is checked by dart run tool/contract_governance.dart against AppConstants.YSAM_REVIEW_MESSAGE ↔ Laravel ysam_review_message ↔ api.json key ysam_review_message.
 
 ## 51. YSAM Translate
 
@@ -2006,7 +2694,7 @@ Dynamically translates messages specifically within the YSAM chat/comments ecosy
 
 **cURL Example (JSON Payload):**
 
-```bash
+bash
 curl -X POST https://[BASE_URL]/api.php/v1/ysam_translate \
 -H "Authorization: Bearer <TOKEN>" \
 -H "Content-Type: application/json" \
@@ -2017,11 +2705,11 @@ curl -X POST https://[BASE_URL]/api.php/v1/ysam_translate \
 "sender": 123,
 "user_timezone": "America/New_York"
 }'
-```
+
 
 **Success Schema (200 OK):**
 
-```json
+json
 {
 "code": 1,
 "text": "I feel much better today, thank you.",
@@ -2029,4 +2717,57 @@ curl -X POST https://[BASE_URL]/api.php/v1/ysam_translate \
 "detected_language_full": "Spanish",
 "timestamp_display": "Fri, 08 May 2026 (11:06 pm)"
 }
+
+
+## 52. Get Default Countries
+
+## Endpoint
+
+```text
+POST /api.php/v1/get_default_countries
 ```
+
+## Purpose
+
+Returns active countries, all currencies, and hard-coded default country/currency codes.
+
+## Authentication
+
+Bearer required. No POST fields are read by `html/api/v1/api_get_default_countries.php`.
+
+## Request Parameters
+
+None.
+
+## Success Response
+
+Top-level JSON only (no `status` / `message` envelope):
+
+```json
+{
+  "countries": [],
+  "currencies": [],
+  "default_country": "IN",
+  "default_currency": "INR"
+}
+```
+
+### `countries[]` row
+
+| Field | Type | Notes |
+|---|---|---|
+| name | string | `countries.country_name` where `active = 1`. |
+| country_code | string | `countries.country_code`. |
+| code | string | Duplicate of `country_code` (same column). |
+
+### `currencies[]` row
+
+| Field | Type | Notes |
+|---|---|---|
+| name | string | `currencies.currency_name`. |
+| currency_code | string | `currencies.currency_code`. |
+| symbol | string | `currencies.currency_symbol`, or **""** if null. |
+
+## Failure Response
+
+Same top-level keys; `countries` and `currencies` are empty arrays; defaults remain `IN` / `INR`.
