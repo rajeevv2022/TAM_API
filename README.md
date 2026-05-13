@@ -10,6 +10,174 @@
 
 - **Firebase App Check:** Not read or enforced by `html/api.php`. When the mobile app calls Laravel first, App Check applies at that layer per Laravel configuration.
 
+- [Versioning](#versioning)
+- [Authentication](#authentication)
+- [Response Standards](#response-standards)
+  - [Nested objects and arrays](#nested-objects-and-arrays)
+- [Base URL](#base-url)
+  - [Documentation depth by section](#documentation-depth-by-section)
+- [1. Check Counsellor Access](#1-check-counsellor-access)
+  - [Runtime (`html/api/v1/api_check_counsellor_access.php`)](#runtime-htmlapiv1api_check_counsellor_accessphp)
+- [2. Check Maintenance](#2-check-maintenance)
+- [3. Check Merge Accounts](#3-check-merge-accounts)
+- [4. Check Unique User Name](#4-check-unique-user-name)
+  - [Runtime (`html/api/v1/api_check_unique_user_name.php`)](#runtime-htmlapiv1api_check_unique_user_namephp)
+- [5. Check Valid Email](#5-check-valid-email)
+  - [Runtime (`html/api/v1/api_check_valid_email.php`)](#runtime-htmlapiv1api_check_valid_emailphp)
+- [6. Confirm Merge Accounts](#6-confirm-merge-accounts)
+- [7. Create Audio Conference](#7-create-audio-conference)
+  - [Runtime (`html/api/v1/api_create_audio_conference.php`)](#runtime-htmlapiv1api_create_audio_conferencephp)
+- [8. Create User](#8-create-user)
+  - [Runtime (`html/api/v1/api_create_user.php`)](#runtime-htmlapiv1api_create_userphp)
+- [9. Delete User Account](#9-delete-user-account)
+  - [Runtime (`html/api/v1/api_delete_user_account.php`)](#runtime-htmlapiv1api_delete_user_accountphp)
+- [10. Generate FAQ](#10-generate-faq)
+  - [Runtime (`html/api/v1/api_generate_faq.php`)](#runtime-htmlapiv1api_generate_faqphp)
+- [11. Get Current Plan Summary](#11-get-current-plan-summary)
+  - [Runtime (`html/api/v1/api_get_current_plan_summary.php`)](#runtime-htmlapiv1api_get_current_plan_summaryphp)
+- [12. Get Current Share Permissions](#12-get-current-share-permissions)
+  - [Runtime (`html/api/v1/api_get_current_share.php`)](#runtime-htmlapiv1api_get_current_sharephp)
+- [13. Get Random Quote](#13-get-random-quote)
+  - [Runtime (`html/api/v1/api_get_random_quote.php`)](#runtime-htmlapiv1api_get_random_quotephp)
+- [14. Ignore Merge Account](#14-ignore-merge-account)
+  - [Runtime (`html/api/v1/api_ignore_merge_account.php`)](#runtime-htmlapiv1api_ignore_merge_accountphp)
+- [15. Initiate Subscription Payment](#15-initiate-subscription-payment)
+  - [Runtime (`html/api/v1/api_initiate_subscription_payment.php`)](#runtime-htmlapiv1api_initiate_subscription_paymentphp)
+- [16. Send Registration OTP](#16-send-registration-otp)
+  - [Runtime (`html/api/v1/api_send_registration_otp.php`)](#runtime-htmlapiv1api_send_registration_otpphp)
+- [17. Share App Data via Email](#17-share-app-data-via-email)
+  - [Runtime (`html/api/v1/api_share_email_counsellor.php`)](#runtime-htmlapiv1api_share_email_counsellorphp)
+- [18. Share Private App Data (Permissions Toggle)](#18-share-private-app-data-permissions-toggle)
+  - [Runtime (`html/api/v1/api_share_with_counsellor.php`)](#runtime-htmlapiv1api_share_with_counsellorphp)
+- [19. Show Plans](#19-show-plans)
+  - [Runtime (`html/api/v1/api_show_plans.php`)](#runtime-htmlapiv1api_show_plansphp)
+- [20. Subscription Payment Confirmation](#20-subscription-payment-confirmation)
+  - [Runtime (`html/api/v1/api_subscription_payment_confirmation.php`)](#runtime-htmlapiv1api_subscription_payment_confirmationphp)
+- [21. Third Banner (Dashboard Data)](#21-third-banner-dashboard-data)
+- [22. Update User Access Code](#22-update-user-access-code)
+- [23. Update User Information](#23-update-user-information)
+- [24. Validate Referral Code](#24-validate-referral-code)
+- [25. Chat Summary (Feel Better in 15)](#25-chat-summary-feel-better-in-15)
+- [26. Check Chat Usage (FB15 / TOT)](#26-check-chat-usage-fb15--tot)
+- [27. Audio Transcribe (Main)](#27-audio-transcribe-main)
+- [28. Generate Chat Summary (Cron / Manual)](#28-generate-chat-summary-cron--manual)
+- [29. Generate WebSocket Token](#29-generate-websocket-token)
+- [30. Get Complete YSAM Post](#30-get-complete-ysam-post)
+- [31. Google Audio Transcribe (Fallback)](#31-google-audio-transcribe-fallback)
+- [32. List YSAM Posts](#32-list-ysam-posts)
+  - [`data.data[]` post object (`get_all_ysam_posts`, app branch)](#datadata-post-object-get_all_ysam_posts-app-branch)
+- [33. Connections Block User](#33-connections-block-user)
+- [Endpoint](#endpoint)
+- [Purpose](#purpose)
+- [Authentication](#authentication-1)
+- [Request Parameters](#request-parameters)
+- [Success Response](#success-response)
+  - [`data` object (success)](#data-object-success)
+- [Failure Response](#failure-response)
+- [Notes](#notes)
+- [34. Connections Check Consent](#34-connections-check-consent)
+- [Endpoint](#endpoint-1)
+- [Purpose](#purpose-1)
+- [Authentication](#authentication-2)
+- [Request Parameters](#request-parameters-1)
+- [Success Response](#success-response-1)
+- [Failure Response](#failure-response-1)
+- [35. Connections Check Usage](#35-connections-check-usage)
+- [Endpoint](#endpoint-2)
+- [Purpose](#purpose-2)
+- [Authentication](#authentication-3)
+- [Request Parameters](#request-parameters-2)
+- [Success Response](#success-response-2)
+- [Failure Response](#failure-response-2)
+- [Notes](#notes-1)
+- [36. Connections Dashboard](#36-connections-dashboard)
+- [Endpoint](#endpoint-3)
+- [Purpose](#purpose-3)
+- [Authentication](#authentication-4)
+- [Request Parameters](#request-parameters-3)
+- [Success Response](#success-response-3)
+  - [Raw JSON from `list_ysam_user_conversations` (before `tam_connections_dashboard.php`)](#raw-json-from-list_ysam_user_conversations-before-tam_connections_dashboardphp)
+  - [Wrapped JSON from `tam_connections_dashboard.php`](#wrapped-json-from-tam_connections_dashboardphp)
+  - [`data.conversations[]` row (`list_ysam_user_conversations`)](#dataconversations-row-list_ysam_user_conversations)
+  - [`data.discover_groups[]` row](#datadiscover_groups-row)
+- [Failure Response](#failure-response-3)
+- [Notes](#notes-2)
+- [37. Connections Get Messages](#37-connections-get-messages)
+- [Endpoint](#endpoint-4)
+- [Purpose](#purpose-4)
+- [Authentication](#authentication-5)
+- [Request Parameters](#request-parameters-4)
+- [Success Response](#success-response-4)
+  - [`data.messages[]` row (`tam_connections_get_messages.php`)](#datamessages-row-tam_connections_get_messagesphp)
+- [Failure Response](#failure-response-4)
+- [Notes](#notes-3)
+- [38. Connections Group Subscribe](#38-connections-group-subscribe)
+- [Endpoint](#endpoint-5)
+- [Purpose](#purpose-5)
+- [Authentication](#authentication-6)
+- [Request Parameters](#request-parameters-5)
+- [Success Response](#success-response-5)
+- [Failure Response](#failure-response-5)
+- [Notes](#notes-4)
+- [39. Connections Group Unsubscribe](#39-connections-group-unsubscribe)
+- [Endpoint](#endpoint-6)
+- [Purpose](#purpose-6)
+- [Authentication](#authentication-7)
+- [Request Parameters](#request-parameters-6)
+- [Success Response](#success-response-6)
+- [Failure Response](#failure-response-6)
+- [Notes](#notes-5)
+- [40. Connections Register Consent](#40-connections-register-consent)
+- [Endpoint](#endpoint-7)
+- [Purpose](#purpose-7)
+- [Authentication](#authentication-8)
+- [Request Parameters](#request-parameters-7)
+- [Success Response](#success-response-7)
+- [Failure Response](#failure-response-7)
+- [Notes](#notes-6)
+- [41. Connections Send Message](#41-connections-send-message)
+- [Endpoint](#endpoint-8)
+- [Purpose](#purpose-8)
+- [Authentication](#authentication-9)
+- [Request Parameters](#request-parameters-8)
+- [Supported Attachment MIME Types](#supported-attachment-mime-types)
+- [Success Response](#success-response-8)
+  - [`data` fields — success (`message` **success**, single or group)](#data-fields--success-message-success-single-or-group)
+  - [`data` fields — idempotent duplicate (`message` **duplicate**)](#data-fields--idempotent-duplicate-message-duplicate)
+- [Failure Response](#failure-response-8)
+- [Notes](#notes-7)
+- [42. User Load Conversations](#42-user-load-conversations)
+- [Endpoint](#endpoint-9)
+- [Purpose](#purpose-9)
+- [Authentication](#authentication-10)
+- [Request Parameters](#request-parameters-9)
+- [Success Response](#success-response-9)
+  - [`data` room fields (`app_tam_connections_messages`)](#data-room-fields-app_tam_connections_messages)
+  - [`data.messages[]` row (`format_message_payload`)](#datamessages-row-format_message_payload)
+  - [`reply_to` object (`build_reply_block`, when non-null)](#reply_to-object-build_reply_block-when-non-null)
+- [Failure Response](#failure-response-9)
+- [Notes](#notes-8)
+- [43. Core Translate](#43-core-translate)
+- [44. Upload Audio](#44-upload-audio)
+- [45. YSAM Add/Update Article](#45-ysam-addupdate-article)
+- [46. YSAM Connect to User](#46-ysam-connect-to-user)
+- [47. YSAM Follow User](#47-ysam-follow-user)
+- [48. YSAM Get All Categories](#48-ysam-get-all-categories)
+- [49. YSAM Initialize Form](#49-ysam-initialize-form)
+- [50. YSAM Report User Post](#50-ysam-report-user-post)
+- [50a. YSAM Review Message](#50a-ysam-review-message)
+- [51. YSAM Translate](#51-ysam-translate)
+- [52. Get Default Countries](#52-get-default-countries)
+- [Endpoint](#endpoint-10)
+- [Purpose](#purpose-10)
+- [Authentication](#authentication-11)
+- [Request Parameters](#request-parameters-10)
+- [Success Response](#success-response-10)
+  - [`countries[]` row](#countries-row)
+  - [`currencies[]` row](#currencies-row)
+- [Failure Response](#failure-response-10)
+
+
 ### Mobile app path (Laravel proxy)
 
 The Flutter app calls **Laravel** routes (for example POST {APP_BASE}/user_conversations_dashboard) with **JSON** bodies (Content-Type: application/json) and standard mobile headers. Laravel controllers forward to the legacy **/api.php/v1/{apiName}** endpoints using server-side bearer + form-style POST fields.
@@ -115,7 +283,7 @@ All endpoints below are relative to the base URL.
 
 ### Documentation depth by section
 
-Field-level tables for **nested** response objects (arrays of maps, `data.*` shapes) are present for: **§21 Third Banner**, **§30 Get Complete YSAM Post**, **§32 List YSAM Posts**, **§34–§42** (Connections family + user load), **§52 Get Default Countries**. Remaining numbered sections still use shorter parameter/example blocks; extend them using the same table style when auditing each `html/api/v1/*.php` file.
+Field-level **Runtime (`html/api/v1/...`)** subsections (request echo shapes, nested tables) are now included for **all sections**: **§1–§29**, **§30 Get Complete YSAM Post**, **§31 Google Audio Transcribe**, **§32 List YSAM Posts**, **§34–§42** (Connections + user load), **§43–§51**, **§50a YSAM Review Message**, **§52 Get Default Countries**. Every section has been runtime-traced against its matching `html/api/v1/*.php` handler.
 
 ## 1. Check Counsellor Access
 
@@ -140,9 +308,9 @@ Validates a Google OAuth2 access token for an employee, provisions or updates th
 
 **Example Payload (Form Data):**
 
-text
+```text
 access_token=ya29.a0AfB_byC...&user_lang=en
-
+```
 
 **cURL Example:**
 
@@ -189,6 +357,15 @@ json
 }
 ]
 
+### Runtime (`html/api/v1/api_check_counsellor_access.php`)
+
+| Item | Detail |
+|------|--------|
+| **HTTP body** | Single JSON **array** with **exactly one** object (`echo json_encode($output)`; `$output` is a list with one `push`). |
+| **HEAD** | No body; connection closed. |
+| **Success object fields** | `code` (int `1` on success), `type` (string array: `"A"` admin, `"O"` ops lead, `"M"` manager, `"C"` app counsellor), `c_id` (Laravel `users.id` or new insert id), `c_name`, `c_email`, `c_phone`, `c_timezone`, `c_age` (computed), `c_gender`, `c_picture` / `c_video` (URL or `""`), `c_lang_code`, `c_country`, `message` (`""` on success). |
+| **Failure object fields** | Same keys; `code` is int `0`; `type` is `[]`; counsellor fields empty strings; `message` is translated error text. |
+| **Google verify branch** | `authenticate_token` returns `code` as int `1`/`0` (PHP compares to `"0"` in one branch — treat `code` as numeric in clients). |
 
 ## 2. Check Maintenance
 
@@ -205,13 +382,18 @@ Checks if the application is currently under maintenance and returns the availab
 
 - **Security Notes:** Unauthenticated. Relies on Firebase AppCheck to prevent abuse.
 
-**Canonical response keys (mobile MaintenanceConfig):**
+**Runtime (`html/api/v1/api_check_maintenance.php`):** response is a single JSON **object** (no wrapper). Keys and semantics:
 
-- **UPDATION_INPROGRESS** (bool): global maintenance lock when true.
-- **Feature keys** (bool): REGISTRATION, FEEL_BETTER_IN_15, THERAPY_OVER_TEXT, NIGHT_AUXIE, TROOPERS_TOGETHER, LIBRARY, RESOURCES, ASSESSMENTS, CONNECTIONS, YSAM — true means feature **enabled**.
-- **Meta:** MESSAGE_TITLE, MESSAGE, LIVE_BACK_TIME, SHORT_MESSAGE (optional tile hint).
+| Key | When present | Type / meaning |
+|-----|----------------|----------------|
+| `MAINTENANCE_ACTIVE` | Always | bool. From SQL `app_update` when a maintenance row is active; default idle object uses `false`. |
+| `UPDATION_INPROGRESS` | Always (added at emit time) | bool. **Mirror of `MAINTENANCE_ACTIVE`** so Flutter `MaintenanceConfig.globalMaintenanceInProgress` matches Laravel-proxied legacy responses. |
+| `MESSAGE_TITLE`, `MESSAGE`, `LIVE_BACK_TIME` | Always | strings. `LIVE_BACK_TIME` is ISO-8601 UTC (`Y-m-d\TH:i:s\Z`) when a row exists; else `""`. |
+| `short_message` | Idle template | string (default `""`). Lowercase key on the **idle** payload only. |
+| `SHORT_MESSAGE` | Active maintenance row | string. Set to PHP constant `maintenance_short_text` in the active branch (short DB column is selected but not bound into `$maintenance`; chip text is usually this constant). |
+| `REGISTRATION`, `FEEL_BETTER_IN_15`, `THERAPY_OVER_TEXT`, `NIGHT_AUXIE`, `TROOPERS_TOGETHER`, `LIBRARY`, `RESOURCES`, `ASSESSMENTS`, `CONNECTIONS`, `YSAM` | Always | bool. Values are the SQL `*_disabled` / `tam_*_disabled` flags cast with `(bool)…` — **`true` means that area is turned OFF (disabled)** under maintenance, not “enabled”. |
 
-Older examples may show MAINTENANCE_ACTIVE; the **runtime** mobile client uses **UPDATION_INPROGRESS** (see Flutter MaintenanceConfig).
+**Flutter note:** `MaintenanceConfig.isFeatureEnabled` assumes JSON `true` means **enabled**. That matches Laravel only if the upstream payload is normalized; for **raw** legacy semantics above, the booleans are **inverted vs that comment**. Treat PHP as source of truth for `html/api/v1` or add a mapping layer in the proxy.
 
 **Parameters:**
 
@@ -230,15 +412,16 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_maintenance \
 -d "timezone=America/New_York"
 
 
-**Success Schema (200 OK):**
+**Success Schema (200 OK):** (idle example — all feature flags `false` = nothing disabled)
 
 json
 {
+"MAINTENANCE_ACTIVE": false,
 "UPDATION_INPROGRESS": false,
-"MESSAGE_TITLE": "Scheduled Maintenance",
-"MESSAGE": "We will be back by Monday, 01 Jan 2026 [10:00 am EST]",
-"LIVE_BACK_TIME": "2026-01-01T15:00:00Z",
-"REGISTRATION": true,
+"MESSAGE_TITLE": "",
+"MESSAGE": "",
+"LIVE_BACK_TIME": "",
+"REGISTRATION": false,
 "FEEL_BETTER_IN_15": false,
 "THERAPY_OVER_TEXT": false,
 "NIGHT_AUXIE": false,
@@ -248,17 +431,10 @@ json
 "ASSESSMENTS": false,
 "CONNECTIONS": false,
 "YSAM": false,
-"SHORT_MESSAGE": "Offline"
+"short_message": ""
 }
 
-** Note: **
-true = enabled
-false means:
-	- disabled
-	- unavailable
-	- hidden
-	- under maintenance
-depending on client behavior
+** Note (legacy PHP):** for the keys above that mirror SQL `*_disabled` columns, **`true` = that module is disabled / blocked** during maintenance. Use `MAINTENANCE_ACTIVE` / `UPDATION_INPROGRESS` for the global “full maintenance” shell driven by `app_update`.
 
 ## 3. Check Merge Accounts
 
@@ -278,9 +454,9 @@ Checks if there are multiple accounts associated with the provided email or phon
 
 | **Name** | **Type** | **Required** | **Description** |
 |----|----|----|----|
-| user_email | String | Cond. | User's email address (required if checking by email). |
-| user_phone | String | Cond. | User's phone number (required if checking by phone). |
-| login_type | String | No | "E" for Email, "P" for Phone (default: "E"). |
+| user_email | String | Cond. | Trimmed; used as **primary login** when `login_type` is **E** (default). |
+| user_phone | String | Cond. | Trimmed; used as **primary login** when `login_type` is **P**. |
+| login_type | String | No | `E` = email path, `P` = phone path (case-insensitive in `api_check_merge_accounts.php`). |
 
 **cURL Example:**
 
@@ -293,18 +469,29 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_merge_accounts \
 -d "login_type=E"
 
 
-**Success Schema (200 OK):** *(Note: Internal wrapper returns data dynamically based on the underlying check_merge_accounts helper function).*
+**Success / body (200 OK):** `api_check_merge_accounts.php` assigns `$output = json_decode(check_merge_accounts(...), true)` and echoes `json_encode($output)` with **no** extra wrapper.
 
-json
-{
-"status": "success",
-"data": {
-"merge_required": true,
-"primary_user_id": 123,
-"accounts_to_merge": [124, 125]
-}
-}
+Top-level shape from `check_merge_accounts()` in `html/functions.php`:
 
+| Field | Type | Notes |
+|-------|------|--------|
+| `status` | string | `"success"` for normal completion (including empty input / no duplicates). **`"error"`** only from the script `catch` block (not from the helper). |
+| `merge_count` | int | `count(data)` when `data` is an array of merge candidates. |
+| `current_user_id` | int or null | Primary reservation user id when the login resolves; else `null`. |
+| `data` | array or string | **Array** of candidate objects (see table below), or a **string** error/human message (`"No primary login key provided"`, `"No user found for provided email"`, or opt-out early exit with empty array — still `status: success`). |
+
+**`data[]` object fields** (each merge candidate):
+
+| Field | Type |
+|-------|------|
+| `old_user_id` | int |
+| `user_email` | string (partially masked or `"-"`) |
+| `phone_number` | string (partially masked or `"-"`) |
+| `user_name` | string (masked) |
+| `last_login` | string (formatted `l, d M Y` or `""`) |
+| `user_gender` | string (`Male` / `Female` / `Others`) |
+| `valid_email` | `"Y"` or `"N"` |
+| `login_type` | string (DB `external_login`) |
 
 ## 4. Check Unique User Name
 
@@ -359,6 +546,15 @@ json
 }
 
 
+### Runtime (`html/api/v1/api_check_unique_user_name.php`)
+
+| Item | Detail |
+|------|--------|
+| **Envelope** | Single JSON object: `response_code` (string `"1"` / `"0"`), `message`, `status`, `data` (always `""` string in normal paths). |
+| **Blank name** | `response_code` `"0"`, `message` `"User Name cannot be blank"`, `status` `"failure"`. |
+| **Taken name** | Loads `language_config/create_user/create_user_config_{user_lang}.php` and sets `message` from `username_already_used` constant when defined. |
+| **Catch** | Same envelope with localized `technical_issue` / `high_traffic` text. |
+
 ## 5. Check Valid Email
 
 Performs deep validation on an email address, checking MX DNS records and ensuring it is not a temporary/disposable email domain.
@@ -411,6 +607,17 @@ json
 }
 
 
+### Runtime (`html/api/v1/api_check_valid_email.php`)
+
+| `response_code` | `status` | When |
+|-----------------|----------|------|
+| `"1"` | success | Disposable API unreachable (`curl` failure) — proceed-with-caution path; or disposable check returned non-disposable. |
+| `"0"` | success | Domain is in allowlist `valid_email_domains` (`make_output("0", …)` — message *"Email id provided is valid."*). |
+| `"-1"` | failure | Invalid format, no MX, domain in `invalid_email_domains`, or disposable API reports `disposable: true`. |
+| `"0"` | failure | Uncaught `Throwable` in `catch` (`make_output("0", $e->getMessage(), "failure")`). |
+
+All codes are **strings**. `data` is always present on the envelope (string, often `""`).
+
 ## 6. Confirm Merge Accounts
 
 Executes the account merging process, consolidating the selected duplicate accounts into the primary User ID (reservation users).
@@ -442,12 +649,27 @@ curl -X POST https://[BASE_URL]/api.php/v1/confirm_merge_accounts \
 -d "account_list=124,125"
 
 
-**Success Schema (200 OK):**
+**Runtime (`html/api/v1/api_confirm_merge_accounts.php`):**
+
+| Path | Body |
+|------|------|
+| **Happy path** | **Raw echo** of the **integer** return value from `merge_user_accounts_confirm($connection, $user_id, $account_list)` — **not** JSON. Typical success value is `0` (see `merge_user_accounts` in `html/functions.php`). |
+| **Throwable** | JSON object: `{"status":"error","data":"<localized or technical string>"}`. |
+
+`merge_user_accounts_confirm` passes the third argument straight into `merge_user_accounts` as the **old** user id. If `account_list` contains commas, PHP coerces the string to an integer (**first numeric segment only**); clients that need multiple merges should call once per `old_user_id` or extend the script to loop.
+
+**Success Schema (200 OK):** *(legacy echoes a bare integer — example below is illustrative; clients must tolerate non-JSON on success.)*
+
+text
+0
+
+
+**Error Schema (200 OK):**
 
 json
 {
-"status": "success",
-"data": "Accounts merged successfully"
+"status": "error",
+"data": "Technical issue message"
 }
 
 
@@ -485,6 +707,16 @@ json
 }
 
 
+### Runtime (`html/api/v1/api_create_audio_conference.php`)
+
+| `response_code` | `status` | When |
+|-----------------|----------|------|
+| `"1"` | success | `create_update_audio_conference` returned `'1'`. |
+| `"0"` | failure | Function returned `'-1'` (DB error) **or** validation branch (`$data == '3'`) for missing/invalid mandatory fields **or** `strtotime` produced sentinel used as error (`$date == 3` guard). |
+| `"0"` | failure | `catch`: localized DB messages or generic *"Error Creating / Updating Conference"*. |
+
+HEAD requests: no JSON body is written (`echo` skipped when method is `HEAD`); `$output` stays the initialized empty array for those calls.
+
 ## 8. Create User
 
 Registers a new user account, handling profile details, guardian information (for minors), and corporate access codes.
@@ -514,6 +746,8 @@ Registers a new user account, handling profile details, guardian information (fo
 | user_guardian_relationship | String | Cond. | Required if user is a minor. |
 | access_code | String | No | Corporate / Plan access code. |
 | device_id | String | No | Client device identifier. |
+| user_lang | String | No | Language code (default `en`); must be in the script’s allow-list or forced to `en`. |
+| client_ip_address | String | No | Passed through to `create_user(...)` as `$user_client_ip_address` (geo / access-code validation). |
 
 **cURL Example:**
 
@@ -526,19 +760,34 @@ curl -X POST https://[BASE_URL]/api.php/v1/create_user \
 -d "user_password=SecurePass123"
 
 
-**Success Schema (200 OK):**
+**Success Schema (200 OK):** *(shape from `create_user(..., $call_from_app = true)` in `html/functions.php` — user id is **`reservation_user_id`**, not nested under `data`.)*
 
 json
 {
 "response_code": "1",
 "status": "success",
-"message": "Registration successful",
-"data": { "user_id": 123 },
+"message": "Localized registration / trial summary string",
+"invalid_code": "N",
+"reservation_user_id": 123,
+"invalid_email": "N",
 "show_user_usage_policy": ""
 }
 
+
 ** Note: **
-- The optional show_user_usage_policy field is dynamically generated using the user's assigned subscription category and current monthly feature restrictions.
+- **`show_user_usage_policy`**: long-form usage / plan-restriction text for the UI (may be empty).
+- **`invalid_code`** / **`invalid_email`**: string flags returned on several success paths (`"Y"` / `"N"` style).
+- Failures use the same top-level keys with `response_code` **`"0"`**, `status` **`failure`**, and **`show_user_usage_policy`** commonly `""`.
+
+### Runtime (`html/api/v1/api_create_user.php`)
+
+| Item | Detail |
+|------|--------|
+| **Envelope** | Single JSON object from `echo json_encode($output)` after `create_user` returns JSON decoded into `$output`, or from early validation / `catch`. |
+| **Admin session** | For each non-HEAD request the script sets `$_SESSION['user_is_admin']`, `$_SESSION['user_id']`, `$_SESSION['user_name']` to fixed admin values so `create_user` internal permission checks succeed — scoped to this request only until `session_destroy()` in `finally`. |
+| **`response_code`** | String **`"1"`** / **`"0"`** on normal paths. |
+| **Success extras** | `invalid_code`, `invalid_email`, `reservation_user_id` (int), `show_user_usage_policy` (string, may be multi-line). |
+| **HEAD** | No body (`echo` skipped). |
 
 ## 9. Delete User Account
 
@@ -576,6 +825,26 @@ json
 "message": "Cannot delete account with an active subscription."
 }
 
+
+### Runtime (`html/api/v1/api_delete_user_account.php`)
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `code` | int | `1` success; `0` all failure / empty-input / exception paths. |
+| `message` | string | From `language_config/delete_account/config_delete_user_{user_lang}.php` constants (`delete_success`, `valid_subscription_exists`, `elevated_access`, `not_authorized`, etc.) or `session_error` / `technical_issue` / `high_traffic` on `catch`. |
+
+**`delete_user_cp(..., true)` return → `code` mapping**
+
+| Return | `code` | Typical constant key |
+|--------|--------|----------------------|
+| `"1"` | 1 | `delete_success` |
+| `"3"` | 0 | `not_authorized` |
+| `"2"` | 0 | `elevated_access` |
+| `"4"` | 0 | `valid_subscription_exists` |
+| `"5"` | 0 | `delete_confirmation_message_active_reservation` |
+| `"6"` | 0 | `generic_error` |
+| `"7"` | 0 | `user_does_not_exist` |
+| (empty `user_id`) | 0 | `generic_error` |
 
 ## 10. Generate FAQ
 
@@ -615,6 +884,23 @@ json
 }
 
 
+### Runtime (`html/api/v1/api_generate_faq.php`)
+
+| HTTP | When |
+|------|------|
+| 200 | Valid user, FAQs built; body `{"code":1,"message":"","data":[...]}`. |
+| 400 | `user_reference_id` missing or `<= 0`. |
+| 404 | User not found or blocked (`user_blocked <> 0` excluded by query). |
+| 405 | Method not `POST` (checked after language file load). |
+| 500 | Missing `language_config/journal/journal_config_{lang}.php`, DB/query failure, or uncaught `Throwable` in outer `catch` (`code` 0, `message` from `retrieve_processing_error`, `data` `[]`). |
+
+**`data[]` section object**
+
+| Field | Type |
+|-------|------|
+| `heading` | string |
+| `items` | array of `{ "question_id", "question", "response" }` — `response` may include HTML snippets and substituted `(AAAA)` trial duration / `(XXXX)` plan list. |
+
 ## 11. Get Current Plan Summary
 
 Returns a comprehensive summary of the user's active subscription plan, feature access, monthly usage limits, and expiry details.
@@ -633,6 +919,7 @@ Returns a comprehensive summary of the user's active subscription plan, feature 
 | user_email        | String   | No           | Primary user email.            |
 | user_key          | String   | No           | Fallback for user email/phone. |
 | user_lang         | String   | No           | Language code.                 |
+| client_ip_address | String   | No           | Forwarded to `get_current_plan_summary(...)` as last argument. |
 
 **Success Schema (200 OK):**
 
@@ -678,11 +965,24 @@ json
 - FB15 limits may include both daily and monthly caps depending on the subscription configuration.
 - Message-count based THoT limits and tracking-unit fields are deprecated and no longer returned.
 
+### Runtime (`html/api/v1/api_get_current_plan_summary.php`)
+
+| Field | Type | Notes |
+|-------|------|--------|
+| `response_code` | int **or** string | Success path sets **integer** `1`. Initial template and `catch` use **string** `"0"` — clients should treat truthily, not by strict type. |
+| `status` | string | `"success"` / `"failure"`. |
+| `message` | string | `"success"` on OK; on empty decode **`no_plan`** constant; on error localized DB / **`no_plan`**. |
+| `data` | object or array | On success, **exact object** returned by `get_current_plan_summary` (JSON-decoded). On failure **`[]`**. |
+
+**POST inputs:** `user_reference_id`, optional `user_email` (also strips `+` for `user_key` resolution), optional `user_key` if email empty, `user_lang`, optional `client_ip_address`.
+
 ## 12. Get Current Share Permissions
 
 Fetches the user's current database toggles for sharing data (Journal, Mood, Habits) with counsellors.
 
 - **Endpoint:** /api.php/v1/get_current_share_permissions
+
+- **Legacy handler file:** `html/api/v1/api_get_current_share.php` (see `api.json` mapping).
 
 - **Method:** POST
 
@@ -713,6 +1013,26 @@ json
 }
 
 
+### Runtime (`html/api/v1/api_get_current_share.php`)
+
+| HTTP | When |
+|------|------|
+| 200 | User found; body `{"code":1,"message":"<settings_loaded constant>","data":{...}}`. |
+| 400 | `user_reference_id` missing or invalid. |
+| 404 | No row for user or `user_blocked <> 0`. |
+| 405 | Not `POST`. |
+| 500 | Missing journal language file, or `catch` with `retrieve_processing_error`. |
+
+**`data` object (all booleans after decrypt)**
+
+| Key | Meaning |
+|-----|---------|
+| `journal_shared` | |
+| `mood_tracker_shared` | |
+| `habit_tracker_shared` | |
+| `anxiety_tracker_shared` | |
+| `assessments_shared` | |
+
 ## 13. Get Random Quote
 
 Retrieves a random motivational quote localized to the user's language.
@@ -739,6 +1059,17 @@ json
 }
 
 
+### Runtime (`html/api/v1/api_get_random_quote.php`)
+
+| Item | Detail |
+|------|--------|
+| **Envelope** | JSON object with exactly **`quote`** and **`author`** strings. |
+| **Empty `user_reference_id`** | Forces `user_lang` to **`en`**, calls `get_random_quote_old` (legacy `tam_inspirational_quotes` table). |
+| **With `user_reference_id`** | Calls `get_random_quote` (personalized `tam_inspirational_quotes_new` + history). |
+| **Return handling** | Helpers return a **PHP array**; the API normalizes array vs JSON string before echoing. |
+| **Errors** | `catch` → `{"quote":"","author":""}`. |
+| **HEAD** | No JSON body (`echo` skipped when method is `HEAD`). |
+
 ## 14. Ignore Merge Account
 
 Sets a flag to permanently dismiss prompts asking the user to merge duplicate accounts.
@@ -756,14 +1087,21 @@ Sets a flag to permanently dismiss prompts asking the user to merge duplicate ac
 | user_id   | String   | Yes          | User ID (reservation users).        |
 | user_lang | String   | No           | Language code.  |
 
-**Success Schema (200 OK):**
+**Success Schema (200 OK):** (`ignore_merge_flag_for_user` returns only `status`; there is no `data` string in the helper.)
 
 json
 {
-"status": "success",
-"data": "Merge ignored successfully"
+"status": "success"
 }
 
+
+### Runtime (`html/api/v1/api_ignore_merge_account.php`)
+
+| Item | Detail |
+|------|--------|
+| **Happy path** | `ignore_merge_flag_for_user($connection, $user_id)` returns JSON `{"status":"success"}`; script `json_decode`s then echoes. |
+| **Catch** | `{"status":"error","data":"<localized or raw message>"}` — `data` holds `high_traffic`, `technical_issue`, or `$e->getMessage()` in the default branch. |
+| **`$output` init** | Pre-initialized as `[]` so `HEAD` / edge paths do not reference an undefined variable. |
 
 ## 15. Initiate Subscription Payment
 
@@ -787,26 +1125,28 @@ Creates a Razorpay Order ID for purchasing a subscription, factoring in GST, app
 |-------------------|----------|--------------|-----------------------------|
 | user_reference_id | String   | Yes          | User ID (reservation users).                    |
 | plan_type         | String   | Yes          | Subscription Category Code. |
+| subscription_price | String | No | Posted into `$_POST`; passed into pricing math (often empty; server uses category list price). |
+| subscription_discount | String/Number | No | Percent discount from client; default `0`. |
 | referral_code     | String   | No           | Ambassador referral code.   |
 | user_lang         | String   | No           | Language code.              |
 
-**Success Schema (200 OK):**
+**Success Schema (200 OK):** **`razorpay_json` is a JSON-encoded string** (the PHP script sets `"razorpay_json" => json_encode($json_data)`), not a nested object. Clients must `JSON.parse` that string if they need an object.
 
 json
 {
   "code": "1",
-  "razorpay_json": {
-    "key": "rzp_live_...",
-    "amount": 150000,
-    "currency": "INR",
-    "order_id": "order_...",
-    "prefill": {
-      "name": "John Doe",
-      "email": "j@example.com"
-    }
-  }
+  "razorpay_json": "{\"key\":\"...\",\"amount\":150000,\"currency\":\"INR\",\"order_id\":\"order_...\",\"prefill\":{...},\"notes\":{...},\"theme\":{...},\"send_sms_hash\":true,\"method\":{...}}"
 }
 
+
+### Runtime (`html/api/v1/api_initiate_subscription_payment.php`)
+
+| `code` | Body |
+|--------|------|
+| `"1"` | `razorpay_json` string as above (Razorpay checkout options + `order_id`). |
+| `"0"` | `message` only — repurchase blocked, lite cap, missing user, gateway/DB `catch`, or invalid params (`error_payment_generic` / localized equivalents). |
+
+**Additional notes:** `plan_functions.php` + `config_plans_text_{user_lang}.php`; transaction name `api_initiate_subscription_payment`. Repurchase rules compare current plan end vs **3 days** and lite **1 day** rules per script.
 
 ## 16. Send Registration OTP
 
@@ -825,20 +1165,33 @@ Generates and sends a One-Time Password to the user's email address for pre-regi
 | user_email | String   | Yes          | Email address to receive the OTP.       |
 | user_lang  | String   | No           | Language code for localized email body. |
 
-**Success Schema (200 OK):**
+**Success Schema (200 OK):** *(on successful send, `code` is numeric `1` in `generate_otp_for_api`; failures may use `0`.)*
 
 json
 {
-"code": "1",
-"message": "OTP sent successfully"
+"code": 1,
+"message": "Localized verification message (email masked in copy)",
+"token": "md5_hex_of_otp",
+"otp_error_message": "Localized generic OTP error hint"
 }
 
+
+### Runtime (`html/api/v1/api_send_registration_otp.php`)
+
+| Item | Detail |
+|------|--------|
+| **Helper** | `generate_otp_for_api($connection, $user_email, $user_lang)` in `html/functions_otp.php` returns JSON **string**; script decodes to array. |
+| **`code` typing** | Success / rate paths use **integer** `0` or `1`; `catch` uses **string** `"0"` — treat loosely. |
+| **APCu** | OTP throttling and locks use APCu keys `login_token_OTP_*` / `otp_lock_*`. |
+| **Failures** | Duplicate merged account, blocked user, invalid email, mail send failure, lock timeout, etc. — see helper branches. |
 
 ## 17. Share App Data via Email
 
 Compiles a comprehensive HTML report of the user's active trackers (Journal, Mood, Anxiety, Habits, Assessments) and emails it securely to a designated counsellor.
 
 - **Endpoint:** /api.php/v1/share_app_data_email
+
+- **Legacy handler file:** `html/api/v1/api_share_email_counsellor.php` (`api.json` → `share_app_data_email`).
 
 - **Method:** POST
 
@@ -853,6 +1206,7 @@ Compiles a comprehensive HTML report of the user's active trackers (Journal, Moo
 | user_reference_id | Integer | Yes | User ID (reservation users). |
 | counsellor_email | String | Yes | Valid email address of the receiving counsellor. |
 | counsellor_message | String | No | Custom message to inject into the HTML email. |
+| user_lang | String | No | Lowercased from POST; drives `journal_config_{lang}.php` (default `en`). |
 
 **Success Schema (200 OK):**
 
@@ -863,11 +1217,25 @@ json
 }
 
 
+### Runtime (`html/api/v1/api_share_email_counsellor.php`)
+
+| HTTP | When |
+|------|------|
+| 200 | Success path after PHPMailer `send()`; body `{"code":1,"message":"..."}` with localized confirmation (`share_email_confirmation` + feature list). |
+| 400 | Invalid or missing `user_reference_id`. |
+| 404 | User missing / blocked. |
+| 405 | Not `POST`. |
+| 500 | Missing journal language file early exit **or** uncaught `Throwable` (`processing_error`). |
+
+**Validation:** `counsellor_message` rejected if it matches `/[<>{}\[\]|\\\\]/`. At least one share flag must be decrypted `1` on the user; **one share per calendar day** per `counsellor_journal_shares`. Engagement must not be all empty (`share_email_no_data`). `code` is **integer** `0`/`1` in responses.
+
 ## 18. Share Private App Data (Permissions Toggle)
 
 Updates the binary/encrypted database toggles dictating which trackers the user consents to share with their internal counsellor.
 
 - **Endpoint:** /api.php/v1/share_private_app_data
+
+- **Legacy handler file:** `html/api/v1/api_share_with_counsellor.php` (`api.json` mapping).
 
 - **Method:** POST
 
@@ -883,6 +1251,7 @@ Updates the binary/encrypted database toggles dictating which trackers the user 
 | habit_tracker_shared   | Integer  | Yes          | 1 (true) or 0 (false). |
 | anxiety_tracker_shared | Integer  | Yes          | 1 (true) or 0 (false). |
 | assessments_shared     | Integer  | Yes          | 1 (true) or 0 (false). |
+| user_lang | String | No | Drives `journal_config_{lang}.php` (default `en`). |
 
 **Success Schema (200 OK):**
 
@@ -892,6 +1261,18 @@ json
 "message": "Settings updated successfully"
 }
 
+
+### Runtime (`html/api/v1/api_share_with_counsellor.php`)
+
+| HTTP | When |
+|------|------|
+| 200 | Updates applied (or no-op when decrypted values already match); `{"code":1,"message":"<settings_updated constant>"}`. |
+| 400 | Missing `user_reference_id`, missing any of the five `*_shared` POST keys, non-digit value, or value not in `{0,1}`. |
+| 404 | User not found / blocked. |
+| 405 | Not `POST`. |
+| 500 | Missing journal language file at bootstrap **or** `processing_error` on `catch`. |
+
+**POST:** all five keys are **required** (`isset`); values must be digit strings `0` or `1`. Updates only columns whose decrypted value differs; values stored encrypted via `$ncrypt->encrypt`.
 
 ## 19. Show Plans
 
@@ -1010,6 +1391,14 @@ Card Types
 	subscription_category_fb15_month
 	subscription_category_thot_words_month
 
+### Runtime (`html/api/v1/api_show_plans.php`)
+
+| Item | Detail |
+|------|--------|
+| **Body** | `show_plans_for_user($connection, $user_key, $user_lang, $new_json)` return value, `json_decode`d when string. **`new=1`** selects the newer structured payload builder inside `plan_functions.php`. |
+| **Success** | Typically a **JSON array** whose first element is an object with `code`, `message`, `default_card_to_show`, `cards` (see illustrative §19 example). Exact card schemas depend on `plan_functions.php`. |
+| **Catch** | Object shape `{"code":"0","message":"<localized error_retrieving_plans / DB / high_traffic / technical_issue>"}`. |
+
 ## 20. Subscription Payment Confirmation
 
 Verifies the Razorpay payment signature, marks the order as paid in the database, activates the package, and dispatches multi-channel activation notifications.
@@ -1049,6 +1438,16 @@ json
 "message": "Your Premium plan is now active."
 }
 
+
+### Runtime (`html/api/v1/api_subscription_payment_confirmation.php`)
+
+| `code` | When |
+|--------|------|
+| `"-1"` | Missing `razorpay_order_id`, `razorpay_payment_id`, or `razorpay_signature`. |
+| `"0"` | Signature verification failed (`error_transaction_invalid`), Razorpay order not `PAID` / payment_failed branches, DB/network `catch`, or other failures (`code` always string in these paths). |
+| `"1"` | Paid order processed; `message` from `plan_confirmation` constant with `XXXX` replaced by category name. |
+
+**Transport:** `respondAndExit` echoes the raw JSON string stored in `$output_data`. **`HEAD`:** the main POST block is skipped; the connection is closed without a response body.
 
 ## 21. Third Banner (Dashboard Data)
 
@@ -1108,21 +1507,43 @@ Updates a user's corporate access code and/or employee ID to instantly grant the
 
 | **Name**    | **Type** | **Required** | **Description**                   |
 |-------------|----------|--------------|-----------------------------------|
-| user_id     | Integer  | Yes          | User ID (reservation users).                          |
-| user_email  | String   | No           | User's email address.             |
-| access_code | String   | No           | The corporate access code.        |
-| employee_id | String   | No           | The user's corporate employee ID. |
+| user_id     | Integer  | Yes          | User ID (reservation users). Cast to `(int)` in handler; fallback lookup via `user_email` when zero. |
+| user_email  | String   | No           | User's primary login key (leading `+` stripped). Used to resolve `user_id` when it is `0`. |
+| access_code | String   | No           | Corporate or coupon access code. When **empty**, the current plan is removed. |
+| employee_id | String   | No           | Corporate employee ID. Required when the target corporate plan has `authorized_only = 'Y'`. |
+| user_lang   | String   | No           | Language code (default `"en"`). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"response_code": 1,
-"message": "Access code updated successfully",
-"status": "success",
-"data": { }
-}
+| Field | Type | Notes |
+|---|---|---|
+| response_code | mixed | Mirrors `code` from `update_user_access_code()`. Integer **`1`** on success, string **`"0"`** on failure. Special values: `"NOUSER"`, `3` (employee ID required). |
+| message | string | Localized result message. |
+| status | string | `"success"` or `"failure"`. |
+| data | object | Full inner JSON returned by the helper (includes `code`, `message`, and optionally `end_date`, `source`). On error contains the error message or localized constant. |
 
+**Runtime (`html/api/v1/api_update_user_access_code.php`)**
+
+1. Delegates to `update_user_access_code($connection, $user_id, $access_code, $user_key, $employee_id, true, $user_lang)` in `functions.php`.
+2. The helper returns a **JSON string**; the handler `json_decode`s it.
+3. If the decoded JSON contains an `error` key, the response is wrapped with `status:"failure"` and `response_code:"0"`.
+4. On success, `response_code` inherits the helper's `code` — which can be integer `1` (plan applied / removed / no change) or string `"NOUSER"` or integer `0` / `3`.
+5. `HEAD` requests skip all processing; the `finally` block still echoes `$output` — but `$output` is **uninitialised** for `HEAD`, so clients must not parse the body.
+
+Helper `code` values from `update_user_access_code()`:
+
+| `code` | Meaning |
+|---|---|
+| `1` (int) | Access code applied, removed, or no-change. |
+| `0` (int) | Invalid code, capacity exhausted, region mismatch, corporate ID not approved, or generic system error. |
+| `"NOUSER"` (string) | User not found by ID or primary login. |
+| `3` (int) | Employee ID required for authorized-only corporate codes. |
+
+**Catch envelope (Throwable):**
+
+```json
+{ "response_code": "0", "message": "Error", "status": "failure", "data": "<localized constant>" }
+```
 
 ## 23. Update User Information
 
@@ -1137,24 +1558,48 @@ Modifies core profile details, including contact numbers, guardian information (
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| primary_login_key | String | Yes | Email or Phone used to identify the user natively. |
-| user_email | String | No | Updated email. |
-| user_phone | String | No | Updated phone number. |
-| user_guardian_name | String | Cond. | Required if minor. |
-| user_guardian_phone | String | Cond. | Required if minor. |
+|---|---|---|---|
+| primary_login_key | String | Yes | Email or Phone used to identify the user. Leading `+` stripped. Hashed via HMAC-SHA256 for DB lookup. |
+| user_email | String | No | Updated email. Validated via `validate_api_user_email`. |
+| user_phone | String | No | Updated phone number (`+`, `.`, space stripped). Validated via `validate_user_phone`. |
+| user_guardian_name | String | Cond. | Required if minor; triggers guardian update. |
+| user_guardian_phone | String | Cond. | Required if minor. Must differ from `user_phone`. |
 | user_guardian_relationship | String | Cond. | Required if minor. |
-| access_code | String | No | Corporate access code. |
-| employee_id | String | No | Corporate employee ID. |
+| access_code | String | No | Corporate / coupon access code. Delegated to `update_user_access_code` at the end of the transaction. |
+| employee_id | String | No | Corporate employee ID. Encrypted before storage. |
+| user_lang | String | No | Language code (default `"en"`). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"status": "1",
-"message": "Information updated successfully"
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | string | `"1"` success, `"0"` failure. |
+| message | string | Localized result message. |
 
+`code` is always a **string** — the helper `update_user_information_app` returns `json_encode(array("code" => "1", ...))`.
+
+**Runtime (`html/api/v1/api_update_user_information.php`)**
+
+1. Delegates to `update_user_information_app(...)` in `functions.php`, which returns a JSON string (or array in edge cases). The handler normalises with `is_string($data) ? json_decode($data, true) : $data`.
+2. The helper runs inside a **transaction** (`begin_transaction` / `commit_transaction` / `rollback_transaction`).
+3. Processing order: validate email → validate phone → validate guardian → update guardian → update PII (`reservation_users_p_details` + `reservation_users`) → log history → apply access code via `update_user_access_code`.
+4. If the access code application fails and `access_code` was non-empty, the entire transaction is **rolled back**.
+5. If `access_code` is empty and PII rows were updated, `code:"1"` with `profile_updated` constant is returned.
+
+**Failure variants:**
+
+| `code` | Scenario |
+|---|---|
+| `"0"` | Email invalid, phone invalid, guardian email/phone same as user, guardian update failed, access code invalid, user not found by `primary_login_key`. |
+| `"-1"` | Exception caught in script-level `catch` block (high traffic / technical issue). |
+
+**Catch envelope (Throwable — script level):**
+
+```json
+{ "status": "-1", "message": "<localized error constant>" }
+```
+
+Note: the script-level error uses `status` (not `code`) with value `"-1"`, while the helper's own errors use `code:"0"`.
 
 ## 24. Validate Referral Code
 
@@ -1168,21 +1613,45 @@ Validates an ambassador referral code to dynamically calculate and apply discoun
 
 **Parameters:**
 
-| **Name**          | **Type** | **Required** | **Description**                 |
-|-------------------|----------|--------------|---------------------------------|
-| user_reference_id | String   | No           | User ID (reservation users).                        |
-| referral_code     | String   | Yes          | The referral code to check.     |
-| plan_type         | String   | Yes          | The subscription category code. |
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| user_reference_id | String | No | User ID (reservation users). Used to determine country code for domestic / international pricing. When empty, defaults to Indian pricing. |
+| referral_code | String | Yes | The referral code to validate. |
+| plan_type | String | Yes | Subscription category code. Resolved to a `category_id` via `get_category_id_from_code`. |
+| user_lang | String | No | Language code (default `"en"`). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"code": "1",
-"discount": "10.00",
-"message": "You've received a 10% discount through John's referral."
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | string | `"1"` valid, `"0"` invalid / error. |
+| discount | string | Percentage discount (e.g. `"10.00"`). Present only when `code:"1"` or `code:"0"` with an inactive/expired match. Empty string `""` when code invalid. Absent when `plan_type` or `referral_code` is empty. |
+| message | string | Localized message. On success, uses `referral_code_message` constant with `{AAAA}` → discount % and `{BBBB}` → referrer first name. |
 
+**Runtime (`html/api/v1/api_validate_referral_code.php`)**
+
+1. Requires `functions_ambassador.php` (not `functions.php`).
+2. Output variable is `$data` (not `$output`), echoed via `json_encode($data)` in `finally`.
+3. Validation order: `referral_code` empty → `plan_type` empty → resolve `category_id` → SQL lookup in `subscription_referral_master` + `subscription_referral_financials_master`.
+4. Pricing column selected dynamically: `ambassador_referral_domestic_discount` when `$india_pricing_flag` is `true`, else `ambassador_referral_international_discount`.
+5. The query checks `subscription_referral_code_valid_till >= CURDATE()` and joins to `reservation_users` for referrer name and block/guardian status.
+6. If `user_blocked != 0` or `guardian_approved != 'Y'`, returns `code:"0"` with `error_code_inactive` constant.
+
+**Failure variants:**
+
+| Condition | `code` | `message` |
+|---|---|---|
+| `referral_code` empty | `"0"` | `error_empty_code` constant |
+| `plan_type` empty | `"0"` | `error_plan_missing` constant |
+| `category_id` not found | `"0"` | `error_plan_missing` constant |
+| No matching row in DB (expired / wrong plan) | `"0"` | `error_code_invalid` constant |
+| Referrer blocked or guardian not approved | `"0"` | `error_code_inactive` constant |
+
+**Catch envelope (Throwable):**
+
+```json
+{ "code": "0", "message": "<localized error constant>" }
+```
 
 ## 25. Chat Summary (Feel Better in 15)
 
@@ -1197,26 +1666,42 @@ Fetches LLM-powered summaries for a user's past "Feel Better in 15" chat session
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| user_id | String | Yes | User ID (reservation users). |
-| number_of_chats | Integer | No | Max historical chats to fetch and summarize (default:4). |
+|---|---|---|---|
+| user_id | String | Yes | The `users.id` (FB15 chat-system user ID), **not** `reservation_users.user_id`. Validated via `SELECT * FROM users WHERE id = $user_id`. |
+| number_of_chats | Integer | No | Max *successful* summaries to collect. Default: `MIN_PREVIOUS_CHATS` constant. Sessions with ≤5 messages or failed LLM calls don't count toward this limit but still appear in the output. |
 
 **Success Schema (200 OK):**
 
-json
-{
-"code": "1",
-"data": [
-{
-"date": "10 May 2026 10:00 am (2 days ago)",
-"counsellor": "Jane Doe",
-"chat_topic": "Anxiety Management",
-"feedback_star": "5",
-"summary": "User discussed work stress and coping strategies.<br><b>Close Chat Remarks:</b> Client reported feeling calmer."
-}
-]
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | string | `"1"` success, `"0"` failure. Always a **string**. |
+| data | array | Array of summary objects (see below). Present only on `code:"1"`. Ordered **chronologically** (`array_unshift` builds reverse; result is oldest → newest). |
+| message | string | Present only on `code:"0"`. |
 
+**`data[]` object:**
+
+| Field | Type | Notes |
+|---|---|---|
+| date | string | `"dd MMM YYYY hh:mm am/pm (timeAgo)"` e.g. `"10 May 2026 10:00 am (2 days ago)"`. |
+| counsellor | string | `users.name` of the counsellor for that session. |
+| chat_topic | string | LLM-extracted topic or `"No specific topic identified"`. HTML entity quotes replaced. |
+| feedback_star | string | Star rating or `"Not Provided"` when empty. |
+| summary | string | LLM-generated summary + `"<br><b>Close Chat Remarks:</b> "` + sentence-cased `close_remark`. May be `"Insufficient information..."` or `"Error while generating summary..."` for edge cases. |
+
+**Runtime (`html/api/v1/api_chat_summary_fb15.php`)**
+
+1. Looks up the user in `users` table (not `reservation_users`). If not found → `code:"0"`, `message:"User id is not valid"`.
+2. If `user_id` is empty → `code:"0"`, `message:"User id does not exist"`.
+3. Iterates closed sessions (`close_reason IS NOT NULL AND <> ''`), ordered DESC by `created_at`.
+4. For each session: if `total_messages > 5` and no cached `chat_summary`, calls `llm_execute('generate_chat_summary', ...)` to generate summary and topic. Result is persisted to `tam_chat_sessions.chat_summary` / `chat_categorization`.
+5. Sessions where `chat_summary` equals `"Insufficient information..."` or `"Error Generating Summary"` don't count toward the `number_of_chats` limit.
+6. The local `toSentenceCase()` and `timeAgo()` helper functions are defined inline in the script (not in `functions.php`).
+
+**Catch envelope (Throwable):**
+
+```json
+{ "code": "0", "message": "<localized error constant>" }
+```
 
 ## 26. Check Chat Usage (FB15 / TOT)
 
@@ -1234,48 +1719,59 @@ Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy O
 
 **Parameters:**
 
-| **Name**          | **Type** | **Required** | **Description**                    |
-|-------------------|----------|--------------|------------------------------------|
-| user_reference_id | String   | Yes          | User ID (reservation users).                           |
-| usage_check_type  | String   | No           | "fb15" or "tot" (default: "fb15"). |
-| user_lang         | String   | No           | Language code.                     |
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| user_reference_id | String | Yes | User ID (`reservation_users.user_id`). Throws exception (code 400) when empty. |
+| usage_check_type | String | No | `"fb15"` or `"tot"` (default: `"fb15"`). |
+| user_lang | String | No | Language code (default `"en"`). |
 
-**Success Schema (200 OK - Usage Allowed):**
+**Success Schema (200 OK — Usage Allowed):**
 
-json
-{
-  "code": 1,
-  "minutes_available": 45,
-  "monthly_words_available": 85000,
-  "show_buttons": {
-    "count": 0,
-    "buttons": []
-  }
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | integer | **`1`** = allowed. Always an **int** (not string). |
+| minutes_available | integer \| string | Remaining FB15 minutes in the current 30-day cycle. Empty string `""` when check type is `tot` or plan is global. |
+| words_available | integer \| string | Remaining TOT words in the current 30-day cycle. Empty string `""` when check type is `fb15` or plan is global. |
+| text | string | Only present on global-plan override. Empty string for normal paths. |
+| show_buttons | object | `{ "count": 0, "buttons": [] }` on success. |
 
-**Usage Enforcement Rules**
-- FB15 usage may be controlled using:
-    fb15_minutes_per_day
-    fb15_minutes_per_month
-- THoT usage is enforced using:
-    thot_words_per_month
-- Legacy message-count and tracking-unit based THoT enforcement has been deprecated.
+**`show_buttons.buttons[]` object (when present):**
 
-**Error Schema (200 OK - Usage Exceeded):**
+| Field | Type | Notes |
+|---|---|---|
+| type | string | `"redirect"` or `"close"`. |
+| text | string | Button label (localized constant). |
+| redirect_code | string | Target: `"subscription"`, `"therapy"`, `"fb15"`, `"profile"`, `"ticket"`, or `"close"`. |
 
-json
-{
-"code": 0,
-"text": "You have exhausted your available usage limit for this plan.",
-"show_buttons": {
-"count": 2,
-"buttons": [
-{ "type": "redirect", "text": "Upgrade Plan", "redirect_code": "subscription" },
-{ "type": "close", "text": "Close", "redirect_code": "close" }
-]
-}
-}
+**Runtime (`html/api/v1/api_check_chat_usage.php`)**
 
+1. Calls `get_current_plan_summary(...)` from `plan_functions.php` to get the user's active plan. If no plan → exception (code 404).
+2. **FB15 cooling period:** If `usage_check_type` is `"fb15"`, calls `check_fb15_session_cooling_period(...)` from `plan_functions.php`. If elapsed seconds < `global_fb15_cooling_period * 60`, returns `code:0` with the cooling-period message and support buttons.
+3. **Global plan check:** Calls `user_global_plan_details(...)`. If the plan is global and enabled (`code:1`), returns `code:1` with unlimited access. If global but disabled (`code:0`), returns `code:0` with the global plan text and extra "access_code" redirect button.
+4. **30-day cycle window:** `get_subscription_cycle_window(start_date)` computes the current billing cycle as 30-day slices from subscription start. Used for both FB15 and TOT usage queries.
+5. **FB15 path:** `get_fb15_minutes_used(...)` sums session durations (first user message → last non-system message) for the cycle. If `minutes_left_cycle ≤ 10`, returns exceeded with THoT/plans/close buttons.
+6. **TOT path:** `get_tot_usage(...)` sums `tam_async_chat_messages.word_count` for the cycle. If `words_left ≤ 0` and not a trial plan, returns exceeded with FB15/close buttons.
+7. Output is encoded with `JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR`.
+
+**Decision tree summary:**
+
+| Condition | `code` | Key fields |
+|---|---|---|
+| User empty | 0 | Exception message |
+| No active plan | 0 | Exception message |
+| Cooling period active (FB15 only) | 0 | `text` with timer message, support buttons |
+| Global plan enabled | 1 | Unlimited; empty minutes/words |
+| Global plan disabled | 0 | `text` from global plan, access_code + support buttons |
+| FB15 minutes ≤ 10 remaining | 0 | `text` from `exceeded_fb15_usage` constant, THoT + plans + close buttons |
+| TOT words ≤ 0 remaining | 0 | `text` from `exceeded_tot_usage` constant, FB15 + close buttons |
+| No subscription category code | 0 | `text` from `invalid_subscription_code` constant |
+| Within limits | 1 | `minutes_available` or `words_available` populated |
+
+**Catch envelope (Throwable):**
+
+```json
+{ "code": 0, "text": "<localized error constant>", "show_buttons": { "count": 2, "buttons": [/* support + close */] } }
+```
 
 ## 27. Audio Transcribe (Main)
 
@@ -1295,28 +1791,61 @@ Transcribes audio using an LLM abstraction layer. It supports Text-to-Speech (TT
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| audio_message | String | Yes\* | Server-generated temporary upload path returned by /upload_audio. (\*Not required if check_lang_support is passed). |
-| check_lang_support | Flag | No | If sent, endpoint only checks if the language is supported (bypasses transcription). |
-| return_type | Integer | No | 0: Text, 1: Audio (TTS), 2: Text+Audio. |
-| mode | String | No | TTS mode ("save" returns a file URL, "stream" returns raw audio bytes). |
-| user_gender | String | No | "M", "F", or "O" (used to map TTS voice). |
+|---|---|---|---|
+| audio_message | String | Yes* | Server path returned by /upload_audio. Sanitised via `htmlspecialchars`. *Not required if `check_lang_support` is sent. |
+| check_lang_support | Flag | No | If present (any value), endpoint only checks language support — bypasses transcription entirely. |
+| return_type | String | No | `"0"` = text only (default), `"1"` = audio only (TTS), `"2"` = text + audio. Compared with `==` (loose). |
+| mode | String | No | `"save"` (default) returns a file URL, `"stream"` returns raw audio bytes (sets `Content-Type: audio/mpeg` and exits). |
+| user_gender | String | No | `"M"`, `"F"`, or `"O"` (default). Mapped to Google TTS gender: `MALE` / `FEMALE` / `NEUTRAL`. |
+| user_lang | String | No | Language code (default `"en"`). Used for Whisper language hint and TTS locale mapping. |
 
 **Success Schema (200 OK):**
 
-json
-{
-"code": 1,
-"text": "Hello, I need some help.",
-"language": "en",
-"language_full": "English",
-"audio": "https://[BASE_URL]/translate_api/voice_notes/uid.mp3"
-}
+The response shape depends on `check_lang_support` vs transcription mode:
 
+**Mode: `check_lang_support`**
+
+| Field | Type | Notes |
+|---|---|---|
+| code | integer | `1` = supported, `0` = unsupported, `-1` = no language code provided. |
+| text | string | `"supported"`, localized `translation_improvement` message, or `"no language code"`. |
+
+**Mode: Transcription (`return_type` = 0)**
+
+| Field | Type | Notes |
+|---|---|---|
+| code | integer | `1` success, `0` failure. |
+| text | string | Transcribed text. On failure: localized `transcription_warning` or `voice_note_missing`. |
+| language | string | Detected language BCP-47 code (e.g. `"en"`). `not_detected` constant on failure. |
+| language_full | string | Full language name from `$app_languages_name` map. |
+
+**Mode: Transcription (`return_type` = 1 — audio only)**
+
+| Field | Type | Notes |
+|---|---|---|
+| code | integer | `1`. |
+| language | string | Detected language code. |
+| language_full | string | Full language name. |
+| audio | string | File URL path (when `mode:"save"`) or raw bytes stream (when `mode:"stream"` — response exits with `Content-Type: audio/mpeg`). |
+
+**Mode: Transcription (`return_type` = 2 — text + audio)**
+
+All fields from `return_type:0` plus `audio` field.
+
+**Runtime (`html/api/v1/audio_transcribe.php`)**
+
+1. Does **not** require `main.php` or `functions.php`. Directly loads `config.php` and FFmpeg autoloader.
+2. Defines helper functions inline: `fetchGoogleVoices`, `selectBestVoice`, `buildTTSRequestPayload`, `streamGoogleTTS`, `isValidAudioFile`, `transcribeAudioWithAbstraction`, `ensureDirExists`.
+3. Transcription: `transcribeAudioWithAbstraction` validates audio via FFmpeg, copies/converts to WAV if needed, then delegates to `llm_execute('audio_story_analysis', ...)`.
+4. TTS voice selection: `selectBestVoice` tries Neural2 → Wavenet → Standard tiers, matching language + gender. Google voices list is cached in APCu for 24h.
+5. `streamGoogleTTS` calls Google Cloud TTS API. In `"save"` mode, writes MP3 to `translate_api/voice_notes/` and returns the relative URL. In `"stream"` mode, echoes raw bytes with audio headers and **exits** (no JSON wrapper).
+6. Temporary files are cleaned up after transcription (`unlink`).
+7. `HEAD` requests skip all processing; the `finally` block echoes `$output` only for non-HEAD.
+8. The `catch` block catches `Exception` (not `Throwable`), setting `code:0` with the exception message.
 
 ## 28. Generate Chat Summary (Cron / Manual)
 
-Generates a structured clinical summary for a specific chat session using an LLM.
+Generates a structured clinical summary for a specific chat session using an LLM. Operates in two modes: single-session (API call) and batch backlog (CLI cron).
 
 - **Endpoint:** /api.php/v1/generate_chat_summary
 
@@ -1329,68 +1858,95 @@ Generates a structured clinical summary for a specific chat session using an LLM
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| session_id | Integer | Cond. | Session ID to summarize. |
-| update_all | String | Cond. | Pass "update_all" to process the entire backlog (requires elevated privileges/cron). |
+|---|---|---|---|
+| session_id | Integer | Cond. | `tam_chat_sessions.session_id` to summarize. Must be numeric. Required when not running in batch mode. |
+| update_all | String | Cond. | CLI-only: pass `"update_all"` as `$argv[1]` to process the entire backlog of sessions without summaries (created after 2024-01-01). |
 
-**Success Schema (200 OK):**
+At least one of `session_id` or `update_all` must be provided; otherwise the script echoes `{"error":"NO PARAMETER PROVIDED"}` and exits.
 
-json
-{
-"close_summary": "The user expressed feelings of isolation. Coping mechanisms were discussed."
-}
+**Success Schema (200 OK — single session):**
 
+| Field | Type | Notes |
+|---|---|---|
+| close_summary | string | LLM-generated summary text. On failure: `"Error while generating the summary"` or `"Insufficient information in chat to generate a summary"`. |
+
+**Runtime (`html/api/v1/generate_chat_summary.php`)**
+
+1. Two modes determined at startup: if `session_id` is present and numeric → `$close_chat_summary = true` (single session). If `$argv[1] == 'update_all'` → batch cron mode.
+2. **Single-session mode:**
+   - Queries `tam_chat_messages` count for the session. If `total_messages ≤ 5`, sets `close_summary` to "Insufficient information..." and persists that to DB.
+   - Otherwise, concatenates all messages (with role labels) via `GROUP_CONCAT`, sanitises special characters, decrypts user gender, then calls `llm_execute('generate_chat_summary', ...)`.
+   - On LLM success: persists `chat_summary` + `chat_categorization` and returns `{"close_summary": "<summary>"}`.
+   - On LLM failure: logs to `cron_logs/Close_Chat_Summary`, persists nothing, returns `{"close_summary": "Error while generating the summary"}`.
+3. **Batch cron mode:**
+   - Sets `max_execution_time` to `0`.
+   - Selects all sessions where `chat_summary` is NULL or empty, `close_reason` is set, and `created_at > '2024-01-01'`.
+   - Iterates and generates summaries via the same LLM call. On failure, sets `chat_summary = null` (allows retry on next run).
+   - Logs progress and count to `cron_logs/Chat_Summary`.
+   - Does **not** return JSON to stdout in batch mode (output is log-only); the `finally` block still calls `echo json_encode($output)` but `$output` may be empty.
+4. Message sanitisation replaces `"`, `'`, `` ` ``, `{`, `}`, `[`, `]` with typographic equivalents and converts `<br>` to newlines before sending to LLM.
+5. The `ncrypt->decrypt` call on `users.gender` determines the pronoun context passed to the LLM.
+
+**Catch envelope (Throwable):**
+
+Single-session: `{"close_summary": "Error while generating the summary"}`.
+Batch: logs error and stack trace; no JSON output.
 
 ## 29. Generate WebSocket Token
 
-## Endpoint
+Issues an HS256 JWT for WebSocket authentication (TAM Connections real-time messaging).
 
-```text
-POST /api.php/v1/generate_ws_token
-```
+- **Endpoint:** /api.php/v1/generate_ws_token
 
-## Purpose
+- **Method:** POST
 
-Issues an HS256 JWT (`tam_connections_jwt_secret`, payload `iss`=`theablemind_web`, `aud`=`tam_api`, `id`=`user_reference_id`, `name` decrypted display name, `iat`/`exp` with **3600s** lifetime) for WebSocket authentication.
+- **Rate Limit:** 40 requests / minute
 
-## Authentication
+- **Authentication:** Bearer required per `html/api.php`. This script does **not** require the bearer to match the `user_reference_id`; callers must align them at the application layer.
 
-Bearer required per `html/api.php` (JWT or static `BEARER_TOKEN` from `html/api/api.json`). This script does **not** require the bearer to match the `user_reference_id`; callers must align them at the application layer.
+**Parameters:**
 
-## Request Parameters
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| user_reference_id | Integer | Yes | Reservation user ID. Cast to `(int)`; values `<= 0` throw exception (code 400). |
+| user_lang | String | No | Language code (default `"en"`). Only used on failure paths for localized error messages. |
 
-| Parameter | Type | Required | Default | Notes |
-|---|---|---|---|---|
-| user_reference_id | integer | Yes | — | Cast with `(int)`; values `<= 0` yield failure. |
-| user_lang | string | No | en | Loaded for `session_error` includes on failure paths only. |
+**Success Schema (200 OK):**
 
-## Success Response
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true` on success. |
+| message | string | `"JWT successful"`. |
+| data | object | `{ "jwt": "<HS256 token string>" }`. |
 
-```json
-{
-  "status": true,
-  "message": "JWT successful",
-  "data": {
-    "jwt": "<string>"
-  }
-}
-```
+**JWT payload claims:**
 
-## Failure Response
+| Claim | Value |
+|---|---|
+| `iss` | `"theablemind_web"` |
+| `aud` | `"tam_api"` |
+| `id` | `user_reference_id` (integer) |
+| `name` | Decrypted `reservation_users_p_details.user_name` (empty string if user not found or blocked). |
+| `iat` | `time()` at generation. |
+| `exp` | `time() + 3600` (1-hour lifetime). |
 
-Typical missing user:
+**Runtime (`html/api/v1/generate_websocket_token.php`)**
 
-```json
-{
-  "status": false,
-  "message": "User not provided",
-  "data": []
-}
-```
+1. The `api.json` key is `generate_ws_token` → maps to script `generate_websocket_token.php`.
+2. Defines an inline `get_username($conn, $user_id)` function that queries `reservation_users_p_details` joined with `reservation_users` (filters `user_blocked = 0`). Returns decrypted `user_name` or empty string.
+3. If `user_id <= 0`, throws `Exception("User not provided", 400)`.
+4. JWT is generated via `JWT::encode($payload, tam_connections_jwt_secret, 'HS256')` — the `JWT` class is loaded via `main.php` autoloading.
+5. Unlike most handlers, the `$output` variable is set inside the `try` block **after** JWT generation, so on `HEAD` requests (which skip nothing — this handler has no HEAD guard on the main logic), the JWT is still generated but the response body is suppressed in `finally`.
 
-Other failures use the same envelope; `message` is the exception message text.
+**Failure Schema:**
 
-## Notes
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `false`. |
+| message | string | Exception message text (e.g. `"User not provided"`, `"Database prepare statement failed: ..."`, or localized constant). |
+| data | array | Empty array `[]` (not object). |
+
+**Notes:**
 
 - WebSocket URL construction is client-side; token is passed as `socket/?token=<jwt>` per mobile client.
 - JWT `id` claim is the numeric reservation `user_id` passed as `user_reference_id`.
@@ -1455,7 +2011,7 @@ Failure inner JSON: `{"code":"0","message":"..."}`.
 
 ## 31. Google Audio Transcribe (Fallback)
 
-Converts incoming server-side audio files to FLAC format and transcribes them directly via Google Speech-to-Text API.
+Converts incoming server-side audio files to FLAC format and transcribes them directly via Google Speech-to-Text API. This is a **fallback** endpoint used when the primary LLM-based transcription (§27) is unavailable.
 
 - **Endpoint:** /api.php/v1/google_audio_transcribe
 
@@ -1470,28 +2026,44 @@ Converts incoming server-side audio files to FLAC format and transcribes them di
 **Parameters (JSON Body):**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| audio_message | String | Yes | Server-generated temporary upload path returned by /upload_audio. |
-| user_lang | String | No | BCP-47 Language code. |
-
-**cURL Example:**
-
-bash
-curl -X POST https://[BASE_URL]/api.php/v1/google_audio_transcribe \
--H "Authorization: Bearer <TOKEN>" \
--H "Content-Type: application/json" \
--d '{"audio_message": "/server/path/audio.mp3", "user_lang": "en"}'
-
+|---|---|---|---|
+| audio_message | String | Yes | Server path returned by /upload_audio. Read from raw `php://input` JSON body. |
+| user_lang | String | No | Language code for localized error messages (default `"en"`). **Not** the audio language hint — audio language is auto-detected via OpenAI Whisper. |
 
 **Success Schema (200 OK):**
 
-json
-{
-"code": "1",
-"language": "en-US",
-"transcript": "I am feeling much better today."
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | string | `"1"` success, `"0"` failure. Always a **string**. |
+| language | string | BCP-47 language code returned by Google Speech-to-Text (e.g. `"en-US"`, `"hi-IN"`). |
+| transcript | string | The transcribed text. |
 
+**Runtime (`html/api/v1/google_audio_transcribe.php`)**
+
+1. Reads JSON body via `file_get_contents('php://input')`, not `$_POST`.
+2. Processing pipeline: FFmpeg converts audio → FLAC → OpenAI Whisper detects language → maps full language name to BCP-47 via `bcp_47_codes_supported` constant → Google Speech-to-Text transcribes with that locale.
+3. Inline helpers: `copyFile`, `detect_language` (calls OpenAI Whisper `verbose_json`), `transcribeAudioWithGoogle` (Google Cloud Speech V1 via service account).
+4. The `detect_language` function calls `api.openai.com/v1/audio/transcriptions` with `whisper-1` model to get `response_format: verbose_json`. Only the `language` field (full English name) is used.
+5. The detected language name (e.g. `"hindi"`) is looked up in `bcp_47_codes_supported` to get the Google locale code (e.g. `"hi-IN"`). If no mapping exists → `code:"0"` with `error_understanding_audio`.
+6. Both the FLAC temp file and original audio file are deleted after processing (`unlink`).
+7. **Important:** Some responses are echoed directly inside the `try` block (not via `$output`), and the `finally` block also echoes `json_encode($output)`. This means for the success path, the JSON from `transcribeAudioWithGoogle` is echoed directly, and then an **additional** `json_encode($output)` may be echoed (where `$output` is undefined). Clients should parse only the first JSON object.
+
+**Failure variants:**
+
+| Condition | Response |
+|---|---|
+| Empty body or missing `audio_message` | `{"code":"0","error":"<issue_processing_voice_note>"}` |
+| FFmpeg conversion fails | Exception with `conversion_failed` constant |
+| Whisper returns no language | `{"code":"0","error":"<trouble_processing_audio>"}` |
+| Language not in BCP-47 map | `{"code":"0","error":"<error_understanding_audio>"}` |
+| Google Speech returns no alternatives | `{"code":"0","error":"<trouble_processing_audio>"}` |
+| Google Speech exception | `{"code":"0","message":"<issue_processing_voice_note>"}` |
+
+**Catch envelope (Throwable):**
+
+```json
+{ "code": "0", "message": "<issue_processing_voice_note constant>" }
+```
 
 ## 32. List YSAM Posts
 
@@ -2369,71 +2941,104 @@ Helper failure (`status` false from `app_tam_connections_messages`):
 
 ## 43. Core Translate
 
-Translates text automatically using an LLM. Detects the source language and updates asynchronous therapy chat logs.
+Translates text automatically using an LLM. Detects the source language and optionally updates asynchronous therapy chat (ThOT) message rows.
 
 - **Endpoint:** /api.php/v1/translate
 
 - **Method:** POST
 
+- **Rate Limit:** 40 requests / minute
+
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| text | String | Yes | Text to translate. |
-| target | String | No | Target language code (default "en"). |
-| type | String | No | "live" or "thot" (Therapy Over Text). |
-| message_id | String | No | DB message ID to update the translated string into. |
-| from_counsellor | String | No | "1" if sent by a counsellor, "0" if user. |
-| user_gender | String | No | "M" or "F". |
+|---|---|---|---|
+| text | String | Yes | Text to translate. URL-decoded and consecutive dots collapsed. |
+| target | String | No | Target language code (default `"en"`). |
+| type | String | No | `"live"` (default) or `"tot"` (Therapy Over Text). Controls whether `tam_async_chat_messages` is updated. |
+| message_id | String | No | `tam_async_chat_messages.id`. When provided, the translated text is persisted back to DB. |
+| session_id | String | No | ThOT session ID. Auto-resolved from `message_id` when `type != "live"`. |
+| from_counsellor | String | No | `"1"` if counsellor message (updates `translate_message` column), `"0"` if user (updates `message` column). |
+| user_lang | String | No | Source language hint for detection (default `"en"`). |
+| user_gender | String | No | `"M"` or `"F"` — mapped to `"male"` / `"female"` for LLM context. |
+| testing | String | No | `"1"` includes extra `db_message` field in response. |
+| verbosity | String | No | LLM verbosity level (default `"low"`). |
+| reasoning | String | No | LLM reasoning level (default `"minimal"`). |
+| thot_attachment_only | String | No | `"1"` to refresh word_count only for ThOT attachment rows (no translation). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"code": 1,
-"text": "Translated content here",
-"detected_language": "hi",
-"detected_language_full": "Hindi"
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | integer | `1` success, `0` failure. Always an **int**. |
+| text | string | Translated text (or original if source == target). |
+| detected_language | string | Detected source language code. |
+| detected_language_full | string | Full language name from `SUPPORTED_LANGUAGES`. |
+| db_message | string | Only present when `testing:"1"`. Describes DB update status. |
 
+**Runtime (`html/api/v1/translate.php`)**
+
+1. Loads `llm_helper.php`, `llm_prompts.php`, `llm_provider.php`, `llm_executor.php` for the LLM abstraction layer.
+2. **ThOT attachment fast path:** When `thot_attachment_only:"1"` and `type:"tot"` and `from_counsellor:"0"`, only calls `async_chat_refresh_user_word_count` (no LLM call). Returns `code:1` with empty text.
+3. **ThOT empty text fast path:** When `type:"tot"` and text is empty with a `message_id`, refreshes word_count only.
+4. **Language detection:** `identifyLanguage()` (from `llm_helper.php`). Urdu detected as Hindi when `user_lang` is `"hi"`.
+5. **Translation logging:** Every request is logged to `app_translation_log` table before translation.
+6. **Same-language path:** When `sourceLanguage === targetLanguage`, no LLM call. For ThOT messages, the DB row is updated with detected language metadata. Attachment-only rows (`msgType=1` or `message='attachment'`) are preserved — only `detected_lang` / `detected_lang_name` are updated.
+7. **Different-language path:** Calls `llm_execute('translate', ...)` via `handleTranslation()`. For ThOT, updates `message` (user) or `translate_message` (counsellor) column. For `type:"live"`, no DB write to `tam_async_chat_messages`.
+8. **Word count refresh:** After any ThOT user message DB update, `async_chat_refresh_user_word_count` recalculates `word_count` using Unicode-aware tokenization (CJK characters counted as ¼ word each, ceil'd).
+9. Error is logged to DB via `logtoDB`.
+
+**Catch envelope (Throwable):**
+
+```json
+{ "code": 0, "text": "Translation Error : <exception message>" }
+```
 
 ## 44. Upload Audio
 
-Uploads audio files to the server. Supports standard multipart file uploads or Base64 encoded recorded strings.
+Uploads audio files to the server. Supports standard multipart file uploads or Base64 encoded recorded strings. Returns the server-side path for use with §27/§31 transcription endpoints.
 
 - **Endpoint:** /api.php/v1/upload_audio
 
 - **Method:** POST
 
-- **Content-Type:** multipart/form-data
+- **Content-Type:** multipart/form-data (file mode) or application/x-www-form-urlencoded (base64 mode)
+
+- **Rate Limit:** 40 requests / minute
 
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| type | String | Yes | 'R' for base64 recorded audio, or 'F' for file. |
-| recordedAudio | String | Cond. | Base64 encoded string (if type is 'R'). |
-| audioFile | File | Cond. | Binary file upload (if type is 'F'). |
-
-**cURL Example (Base64 Mode):**
-
-bash
-curl -X POST https://[BASE_URL]/api.php/v1/upload_audio \
--H "Authorization: Bearer <TOKEN>" \
--H "Content-Type: application/x-www-form-urlencoded" \
--d "type=R" \
--d "recordedAudio=UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AA..."
-
+|---|---|---|---|
+| type | String | Yes | `"R"` for base64 recorded audio, `"F"` for file upload. |
+| recordedAudio | String | Cond. | Base64-encoded audio data (required when `type:"R"`). Decoded and saved as `.wav`. |
+| audioFile | File | Cond. | Binary file upload (required when `type:"F"`). Saved with original extension, prefixed with `uniqid()`. |
 
 **Success Schema (200 OK):**
 
-json
-{
-"code": 1,
-"message": "file uploaded successfully. Please enter your authorization code and continue.",
-"file": "/server/path/audio_uuid.wav"
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | integer | `1` success, `0` failure. Always an **int**. |
+| message | string | Human-readable status message. |
+| file | string | Absolute server path to the uploaded file. Empty string `""` on failure. |
 
+**Runtime (`html/api/v1/upload_audio.php`)**
+
+1. Loads only `config.php` (no `main.php` or `functions.php`). Upload directory is `global_audio_voice_note_dir` constant.
+2. Creates the upload directory recursively if it doesn't exist (`mkdir(..., 0777, true)`).
+3. **Base64 mode (`type:"R"`):** `base64_decode` → `file_put_contents` with filename `audio_<uniqid>.wav`.
+4. **File mode (`type:"F"`):** `move_uploaded_file` with filename `<uniqid>_<original_name>`.
+5. No database connection or session management (lightweight upload-only handler).
+6. Does **not** validate audio format — format validation happens at the transcription endpoints (§27/§31).
+
+**Failure variants:**
+
+| Condition | `code` | `message` |
+|---|---|---|
+| `type:"R"` but `recordedAudio` missing | `0` | `"Invalid request method."` |
+| `type:"F"` but `audioFile` missing | `0` | `"No audio file to upload."` |
+| `file_put_contents` / `move_uploaded_file` fails | `0` | `"There was some error uploading the file."` / `"File upload failed."` |
+| Exception | `0` | `"There was some error uploading the file."` |
 
 ## 45. YSAM Add/Update Article
 
@@ -2443,28 +3048,46 @@ Creates a new post or edits an existing one in the "Your Story and Mine" (YSAM) 
 
 - **Method:** POST
 
+- **Rate Limit:** 40 requests / minute
+
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| user_reference_id | String | Yes | Author's User ID (reservation users). |
-| ysam_update | String | No | "Y" to update an existing article, "N" for new. |
-| ysam_id | String | Cond. | Post ID (required if ysam_update is "Y"). |
-| ysam_title | String | Yes | Title of the post. |
-| article_body | String | Yes | Content of the post. |
-| ysam_category_id | String | Yes | The ID of the category it belongs to. |
-| ysam_hashtags | String | No | Comma-separated hashtags. |
-| ysam_user_name | String | Yes | Author's display name or pseudonym. |
+|---|---|---|---|
+| user_reference_id | String | Yes | Author's User ID (reservation users). Escaped via `mysqli_real_escape_string`. |
+| ysam_update | String | No | `"Y"` to update an existing article. Any other value or empty → new article (`"add"`). |
+| ysam_id | String | Cond. | Post ID (required if updating). |
+| ysam_title | String | Yes | Title of the post. Validated non-empty. |
+| article_body | String | Yes | Content body. Required for non-podcast categories (`ysam_category_id != 1006`). |
+| ysam_category_id | String | Yes | Category / story type ID. `1006` is the podcast category (requires `ysam_narration`). |
+| ysam_hashtags | String | No | Comma-separated hashtags. Cleaned, deduped, title-cased, prefixed with `#`. |
+| ysam_user_name | String | Yes | Author's display name / pseudonym. Validated for uniqueness and appropriateness. |
+| ysam_narration | String | Cond. | Audio narration file path (required when `ysam_category_id` is `1006`). |
+| user_lang | String | No | Language code (default `"en"`). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"status": true,
-"message": "Article successfully submitted",
-"data": { "ysam_id": 102 }
-}
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true` on success, `false` on failure. |
+| message | string | Localized result message. |
+| data | object/array | Contains `ysam_id` on success. Empty array `[]` on failure. |
 
+**Runtime (`html/api/v1/ysam_add_update_article.php`)**
+
+1. Delegates to `submit_ysam(...)` in `functions.php`. The helper returns a **JSON string**; the handler `json_decode`s it.
+2. All POST parameters are escaped with `mysqli_real_escape_string` before passing to the helper.
+3. The `ysam_update` parameter is mapped: `"Y"` → `"update"`, anything else → `"add"`.
+4. The helper validates: title non-empty, body non-empty (unless podcast), username unique (`validate_unique_user_name_ysam`), username appropriate (`appropriate_user_name`).
+5. Content is checked via `check_ysam_content()` (LLM-based classification) before submission.
+6. Includes `functions_ysam.php` for YSAM-specific helpers and `ffmpeg` autoloader for narration processing.
+7. **Catch output format inconsistency:** The `catch` block sets `$output` to `json_encode(...)` (a JSON **string**), while the `finally` echoes `is_array($output) ? json_encode($output) : $output`. So on error, the string is echoed directly.
+
+**Catch envelope (Throwable):**
+
+```json
+{ "status": false, "message": "<error message>", "data": [] }
+```
 
 ## 46. YSAM Connect to User
 
@@ -2481,34 +3104,39 @@ Sends a direct connection request (to initiate a 1-on-1 chat) to the author of a
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| user_reference_id | String | Yes | The ID of the user requesting the connection. |
-| author_reference_id | String | Yes | The ID of the YSAM author they want to connect with. |
-| user_lang | String | No | Language code for localization. |
-
-**cURL Example:**
-
-bash
-curl -X POST https://[BASE_URL]/api.php/v1/ysam_connect_to_user \
--H "Authorization: Bearer <TOKEN>" \
--H "X-Firebase-AppCheck: <APPCHECK_TOKEN>" \
--d "user_reference_id=123" \
--d "author_reference_id=456"
-
+|---|---|---|---|
+| user_reference_id | String | Yes | The ID of the user requesting the connection. Escaped via `mysqli_real_escape_string`. |
+| author_reference_id | String | Yes | The ID of the YSAM author to connect with. |
+| user_lang | String | No | Language code (default `"en"`). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"status": true,
-"message": "Connection request sent successfully",
-"data": []
-}
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true` on success, `false` on failure. |
+| message | string | Localized message. On success: `connection_approved` constant with author's display name substituted. |
+| data | array | Empty array `[]`. |
 
+**Runtime (`html/api/v1/ysam_connect_to_user.php`)**
+
+1. Delegates to `update_connect_to_user($connection, $user_id, $author_id, $user_lang, true)` in `functions.php`.
+2. The helper returns a JSON string; the handler `json_decode`s it.
+3. Self-connection (`user_id === author_id`) returns `code:"0"` with `connection_self_error`.
+4. Checks user's current plan for `tam_connections_enabled == "Y"` via `get_current_plan_summary`. If not enabled → `status:false` with `upgrade_subscription`.
+5. On success: creates/updates a `tam_connections_conversation_master` room (`tam_room_<min>_<max>`) via `INSERT ... ON DUPLICATE KEY UPDATE`, then calls `update_user_connection` within a transaction.
+6. The `$output` echoing uses `is_array($output) ? json_encode($output) : $output` pattern.
+
+**Failure variants:**
+
+| Condition | `status` | `message` |
+|---|---|---|
+| Self-connection | N/A (inner `code:"0"`) | `connection_self_error` constant |
+| Plan doesn't allow connections | `false` | `upgrade_subscription` constant |
+| Exception | `false` | Localized error constant or exception message |
 
 ## 47. YSAM Follow User
 
-Toggles the "follow" status, allowing a user to subscribe to future posts from a specific YSAM author in their feed.
+Toggles the "follow" status, allowing a user to subscribe to or unsubscribe from future posts by a specific YSAM author.
 
 - **Endpoint:** /api.php/v1/ysam_follow_user
 
@@ -2519,19 +3147,32 @@ Toggles the "follow" status, allowing a user to subscribe to future posts from a
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| user_reference_id | String | Yes | The ID of the user initiating the follow. |
-| user_to_follow | String | Yes | The ID of the author being followed. |
+|---|---|---|---|
+| user_reference_id | String | Yes | The ID of the user initiating the follow/unfollow. Escaped via `mysqli_real_escape_string`. |
+| user_to_follow | String | Yes | The ID of the author being followed/unfollowed. |
 
 **Success Schema (200 OK):**
 
-json
-{
-"status": true,
-"message": "You are now following this user",
-"data": []
-}
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true`. |
+| message | string | `follow_user_success_label` or `unfollow_user_success_label` constant depending on the new toggle state. |
+| data | array | Empty array `[]`. |
 
+**Runtime (`html/api/v1/ysam_follow_user.php`)**
+
+1. Delegates to `update_user_following($connection, $user_id, $user_to_follow, true)` in `functions_ysam.php`.
+2. Validates both users exist in `reservation_users` + `reservation_users_p_details` (expects exactly 2 rows). Throws `"Invalid User"` otherwise.
+3. **Toggle logic:** Queries `reservation_user_ysam_follow` for existing row. If found, flips `reservation_user_ysam_following_active` between `"Y"` and `"N"`. If not found, inserts new row with `"Y"`.
+4. Includes `PHPMailer` (likely for notification emails on follow, though no email send is visible in the toggle path).
+5. **Bug note:** The success message references `$follow` (undefined) instead of `$new_follow`. This may cause the message to always use the "follow" label regardless of toggle direction.
+6. The `catch` block in the handler sets `$output` to a `json_encode`'d string.
+
+**Catch envelope (Throwable):**
+
+```json
+{ "status": false, "message": "<error message>", "data": [] }
+```
 
 ## 48. YSAM Get All Categories
 
@@ -2545,26 +3186,41 @@ Retrieves a complete list of categories available for YSAM posts, localized into
 
 **Parameters:**
 
-| **Name**  | **Type** | **Required** | **Description**                     |
-|-----------|----------|--------------|-------------------------------------|
-| user_lang | String   | No           | BCP-47 Language code (default: en). |
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| user_lang | String | No | Language code (default `"en"`). Determines which `ysam_collection_type` rows are returned (`language_code` column). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"status": true,
-"message": "",
-"data": [
-{ "category_id": 1, "category_name": "Mental Health" },
-{ "category_id": 2, "category_name": "Workplace Stress" }
-]
-}
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true` on success, `false` if no categories found. |
+| message | string | `"success"` or `processing_error` constant. |
+| data | array | Array of category objects. Empty array `[]` on failure. |
 
+**`data[]` object:**
+
+| Field | Type | Notes |
+|---|---|---|
+| category_id | mixed | `ysam_collection_type_id` from DB. |
+| category_name | string | `ysam_collection_type_name` from DB, localized per `user_lang`. |
+
+**Runtime (`html/api/v1/ysam_get_all_categories.php`)**
+
+1. Delegates to `get_all_categories($connection, $user_lang, true)` in `functions.php`.
+2. The helper queries `ysam_collection_type WHERE language_code = $user_lang`.
+3. When `redirected_from_app` is `true` (always for API calls), wraps the result in `{ "status", "message", "data" }`. Without this flag, returns a bare JSON array.
+4. The helper returns a **JSON string**; the handler echoes it via the `is_array($output) ? json_encode($output) : $output` pattern (it will be a string).
+
+**Catch envelope (Throwable):**
+
+```json
+{ "status": false, "message": "<error message>", "data": [] }
+```
 
 ## 49. YSAM Initialize Form
 
-Aggregates metadata required to render the YSAM post creation form on the frontend, including the user's current posting eligibility and available categories.
+Aggregates metadata required to render the YSAM post creation form on the frontend, including the user's current pseudonym, localized labels, available categories, and podcast recording constraints.
 
 - **Endpoint:** /api.php/v1/ysam_initialize_form
 
@@ -2574,29 +3230,58 @@ Aggregates metadata required to render the YSAM post creation form on the fronte
 
 **Parameters:**
 
-| **Name**          | **Type** | **Required** | **Description** |
-|-------------------|----------|--------------|-----------------|
-| user_reference_id | String   | Yes          | User ID (reservation users).        |
-| user_lang         | String   | No           | Language code.  |
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| user_reference_id | String | Yes | User ID (reservation users). Escaped via `mysqli_real_escape_string`. |
+| user_lang | String | No | Language code (default `"en"`). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"status": true,
-"message": "success",
-"data": {
-"categories": [
-{ "category_id": 1, "category_name": "Mental Health" }
-],
-"user_can_post": true
-}
-}
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true` on success, `false` if user not found. |
+| message | string | `"success"` or `error_do_not_proceed` constant. |
+| data | object | Form metadata (see below). Empty array `[]` on failure. |
 
+**`data` object fields (when `call_from_app = true`):**
+
+| Field | Type | Notes |
+|---|---|---|
+| ysam_form_heading | string | Localized form heading constant. |
+| ask_for_ysam_user_name | string | `"Y"` if user has no YSAM pseudonym yet, `"N"` if they do. |
+| current_user_ysam_name | string | Decrypted current YSAM pseudonym (empty if none). |
+| ysam_user_name_message_label | string | Localized prompt: either "name exists" or "name required" variant. |
+| story_title_label | string | Localized label. |
+| story_hashtag_label | string | Localized label. |
+| story_category_label | string | Localized label. |
+| categories | array | Result of `get_all_types()` — `[{ "category_id", "category_name" }]`. |
+| story_textarea_placeholder | string | Localized placeholder text. |
+| podcast_title | string | Localized podcast section heading. |
+| podcast_label | string | Localized recording instructions (with duration limits substituted). |
+| submission_confirm_button | string | Localized button text. |
+| submission_cancel_button | string | Localized button text. |
+| minimum_recording_length | mixed | `ysam_narration_min_duration` constant (seconds). |
+| short_recording_message | string | Localized message for recordings shorter than minimum. |
+| maximum_recording_length | mixed | `ysam_narration_duration` constant (seconds). |
+| max_recording_exceeded_message | string | Localized message for recordings longer than maximum. |
+
+**Runtime (`html/api/v1/ysam_initialize_form.php`)**
+
+1. Delegates to `initialize_ysam_form($connection, $user_id, $user_lang, true)` in `functions_ysam.php`.
+2. Queries `reservation_users` + `reservation_users_p_details` for the user's `user_ysam_name`. If user not found → `status:false`.
+3. Uses `get_all_types()` (not `get_all_categories()`) to fetch categories. These are from the `ysam_collection_type` table filtered by lang.
+4. Numbers in recording duration labels are localized to the user's script via `replace_numbers_with_local()`.
+5. The helper returns a JSON string; handler echoes via the `is_array ? json_encode : echo` pattern.
+
+**Catch envelope (Throwable):**
+
+```json
+{ "status": false, "message": "<error message>", "data": [] }
+```
 
 ## 50. YSAM Report User Post
 
-Flags a YSAM post for review by the moderation team. Records the user submitting the report and their given reason.
+Flags a YSAM post for review by the moderation team or **withdraws** an existing report (toggle behaviour).
 
 - **Endpoint:** /api.php/v1/ysam_report_user_post
 
@@ -2607,25 +3292,50 @@ Flags a YSAM post for review by the moderation team. Records the user submitting
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| user_reference_id | String | Yes | ID of the user reporting the post. |
+|---|---|---|---|
+| user_reference_id | String | Yes | ID of the user reporting the post. Escaped via `mysqli_real_escape_string`. |
 | ysam_id | String | Yes | ID of the post being reported. |
-| reason | String | Yes | The reason for the report (e.g., "Inappropriate content", "Spam"). |
-| user_lang | String | No | Language code. |
+| reason | String | Yes | Report reason text. Max 150 chars. Validated for HTML and SQL injection patterns. |
+| user_lang | String | No | Language code (default `"en"`). |
 
 **Success Schema (200 OK):**
 
-json
-{
-"status": true,
-"message": "Post has been successfully reported.",
-"data": []
-}
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true` on success (report recorded or withdrawn). |
+| message | string | Localized message: `post_objection_recorded` or `post_objection_withdrawn`. |
+| data | object | `{ "post_reported_by_user": "Y" }` (reported) or `{ "post_reported_by_user": "N" }` (withdrawn). |
 
+**Runtime (`html/api/v1/ysam_report_user_post.php`)**
+
+1. Delegates to `report_post($connection, $ysam_id, $previous_reported, $reason, $user_id, $user_lang, true)` in `functions_ysam.php`.
+2. **Bug note:** The handler passes `$previous_reported` which is **undefined** in the script scope. The helper uses `$prev_reported` parameter but the actual toggle logic is determined internally by querying `ysam_reported_posts` — so the undefined variable has no functional impact.
+3. **Validation:** Rejects HTML characters (`containsHtmlChars`), SQL injection patterns (`containsSqlInjection`), and reasons > 150 characters. Validation failures return `code:"2"` in web mode, `status:false` in app mode.
+4. **Toggle logic (transactional):**
+   - If user already reported this post → **withdraws** the report (DELETE + decrement `report_count` with `GREATEST(..., 0)`).
+   - If not previously reported → **inserts** new report (INSERT + increment `report_count`).
+5. **Auto-moderation:** After inserting a report, checks if `report_count >= MAX_REPORTED_FOR_SOFT_DELETE`. If so, sets `ysam_published_status = 0` (soft-deletes the post).
+6. If `user_id` is empty (no session or POST value), returns `status:false` with `processing_error`.
+
+**Failure variants:**
+
+| Condition | `status` | `message` |
+|---|---|---|
+| HTML chars in reason | `false` | `invalid_input_special_characters` |
+| SQL injection in reason | `false` | `invalid_input_patterns` |
+| Reason > 150 chars | `false` | `invalid_input_length` |
+| User empty | `false` | `processing_error` |
+| Withdraw failed (0 rows) | `false` | `post_objection_invalid` |
+
+**Catch envelope (Throwable):**
+
+```json
+{ "status": false, "message": "<error message>", "data": [] }
+```
 
 ## 50a. YSAM Review Message
 
-LLM-based **pre-send safety classification** for plain text (used by TAM Connections before connections_send_message, and available for other YSAM flows). Classifies user text and returns allow/block metadata.
+LLM-based **pre-send safety classification** for plain text (used by TAM Connections before `connections_send_message`, and available for other YSAM flows). Classifies user text and returns allow/block metadata.
 
 - **Legacy endpoint:** /api.php/v1/ysam_review_message
 - **Laravel route (mobile):** POST {APP_BASE}/ysam_review_message with **JSON** body (text, user_lang). Laravel forwards only those fields upstream.
@@ -2637,87 +3347,109 @@ LLM-based **pre-send safety classification** for plain text (used by TAM Connect
 **Parameters (canonical):**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| text | String | Yes | Message body to classify (trimmed server-side). |
-| user_lang | String | No | BCP-47 language code for localized classifier messages (default en). |
+|---|---|---|---|
+| text | String | Yes | Message body to classify. Trimmed server-side; empty string → immediate `code:"0"`. |
+| user_lang | String | No | Language code for localized classifier messages (default `"en"`). Validated against `app_supported_languages`. |
 
-**Success schema (200 OK, typical allow):**
+**Success Schema (200 OK — allowed):**
 
-json
-{
-  "status": true,
-  "code": "1",
-  "text": "user message echo",
-  "category_check": {}
-}
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `true`. |
+| code | string | `"1"`. |
+| text | string | Echo of the original user text. |
+| category_check | object | Inner result from `classifyUserText()` — structure depends on LLM response. Contains at least `code` key. |
 
+**Blocked Schema (200 OK — blocked):**
 
-**Blocked / error (200 OK, typical):**
+| Field | Type | Notes |
+|---|---|---|
+| status | boolean | `false`. |
+| code | string | `"0"`. |
+| message | string | `category_check.error` value or `"blocked"` fallback. |
+| category_check | object | Inner classification result. |
 
-json
-{
-  "status": false,
-  "code": "0",
-  "message": "blocked_or_error_key",
-  "category_check": {}
-}
+**Runtime (`html/api/v1/ysam_review_message.php`)**
 
+1. Loads `helpers/llm_executor.php` and `_shared_tam_classify.php` for the `classifyUserText()` function.
+2. `HEAD` requests exit immediately (no processing).
+3. If `text` is empty → `{ "status": false, "message": "empty", "code": "0" }`.
+4. Calls `classifyUserText($text, $user_lang)`. If the function returns `false` → classification failed response with `classification_failed` constant.
+5. Inspects `category_check.code`: if `"1"` → allowed (echoes original text). If `"0"` → blocked (returns `category_check.error` as `message`).
+6. Logs errors to DB via `logtoDB` on exception.
+7. Sets timezone to `Asia/Kolkata` explicitly.
+
+**Catch envelope (Throwable):**
+
+```json
+{ "status": false, "message": "error", "code": "0" }
+```
 
 **Governance anchor:** heading ## 50a. YSAM Review Message is checked by dart run tool/contract_governance.dart against AppConstants.YSAM_REVIEW_MESSAGE ↔ Laravel ysam_review_message ↔ api.json key ysam_review_message.
 
 ## 51. YSAM Translate
 
-Dynamically translates messages specifically within the YSAM chat/comments ecosystem. Contains heavy optimizations to skip LLM calls for emojis, numbers, or ultra-short strings to save compute costs.
+Dynamically translates messages within the YSAM/Connections chat ecosystem. Contains heavy optimizations to skip LLM calls for emojis, numbers, or ultra-short strings. Persists translated messages and updates participant timestamps.
 
 - **Endpoint:** /api.php/v1/ysam_translate
 
 - **Method:** POST
 
-- **Content-Type:** application/json OR application/x-www-form-urlencoded
+- **Content-Type:** application/json OR application/x-www-form-urlencoded (auto-detected: if `$_POST` is empty, reads `php://input` as JSON)
 
 - **Rate Limit:** 40 requests / minute
 
-- **Security Notes:** Uses a database transaction to safely update the tam_connections_conversation_messages table and update the last_login timestamps of the participants securely.
+- **Security Notes:** Uses a database transaction to safely insert into `tam_connections_conversation_messages` and update last_login timestamps.
 
 **Parameters:**
 
 | **Name** | **Type** | **Required** | **Description** |
-|----|----|----|----|
-| text | String | Yes | The text to translate. |
-| target | String | No | Target language code (default: en). |
-| user_lang | String | No | Fallback source language code (default: en). |
-| room | String | Yes | The chat room identifier (ysam_conversations_room_name). |
-| sender | Integer | Yes | The ID of the user sending the message. |
-| timestamp | String | No | Message timestamp. Defaults to current server time. |
-| user_gender | String | No | "M" or "F" to provide contextual hints to the LLM. |
-| user_timezone | String | No | User's timezone (default: global app timezone). |
-
-**cURL Example (JSON Payload):**
-
-bash
-curl -X POST https://[BASE_URL]/api.php/v1/ysam_translate \
--H "Authorization: Bearer <TOKEN>" \
--H "Content-Type: application/json" \
--d '{
-"text": "Me siento mucho mejor hoy, gracias.",
-"target": "en",
-"room": "ysam-room-999",
-"sender": 123,
-"user_timezone": "America/New_York"
-}'
-
+|---|---|---|---|
+| text | String | Yes | The text to translate. Consecutive ellipses collapsed (`...+` → `... `). |
+| target | String | No | Target language code (default `"en"`). |
+| user_lang | String | No | Source language hint / fallback (default `"en"`). |
+| room | String | Yes | Chat room identifier (`ysam_conversations_room_name`). Looked up in `tam_connections_conversation_master`. |
+| sender | Integer | Yes | Reservation user ID of the message sender. Cast to `(int)`. |
+| timestamp | String | No | Message timestamp (default: current server datetime `Y-m-d H:i:s`). |
+| user_gender | String | No | `"M"` or `"F"` → mapped to `"male"` / `"female"` for LLM context. |
+| user_timezone | String | No | IANA timezone (default: `global_application_timezone`). Used for display formatting. |
 
 **Success Schema (200 OK):**
 
-json
-{
-"code": 1,
-"text": "I feel much better today, thank you.",
-"detected_language": "es",
-"detected_language_full": "Spanish",
-"timestamp_display": "Fri, 08 May 2026 (11:06 pm)"
-}
+| Field | Type | Notes |
+|---|---|---|
+| code | integer | `1` success, `0` failure. Always an **int**. |
+| text | string | Translated text (or original if same language / skip conditions). Empty string if input was empty. |
+| detected_language | string | Detected source language code (e.g. `"es"`). Defaults to `"en"` if text was empty. |
+| detected_language_full | string | Full language name (e.g. `"Spanish"`). `"Unknown"` if not in `SUPPORTED_LANGUAGES`. `"English"` if text was empty. |
+| timestamp_display | string | Formatted date in user's timezone: `"Fri, 08 May 2026 (11:06 pm)"`. |
 
+**Runtime (`html/api/v1/ysam_translate.php`)**
+
+1. Loads `config.php`, `functions_init.php`, and dedicated `translation/llm_*.php` helpers (not the same as `translate.php`'s inline includes).
+2. **Input auto-detection:** If `$_POST` is empty, parses `php://input` as JSON and assigns to `$_POST`.
+3. **Fast skip conditions** (no LLM call):
+   - Text ≤ 1 character (`mb_strlen`).
+   - Numbers/symbols only (`/^[\p{N}\p{S}\s]+$/u`).
+   - Emoji only (`isEmojiOnly` strips all `\p{Emoji}\p{Z}\p{C}` and checks if nothing remains).
+4. **Language detection:**
+   - ASCII fast-path: if text is all ASCII and `user_lang == "en"`, source is `"en"` (no LLM call).
+   - Otherwise: `identifyLanguage()` from `llm_helper.php`.
+   - Urdu normalised to Hindi when `user_lang` is `"hi"`.
+5. **Translation:** `handleTranslation()` calls `llm_execute('translate', ...)`. Only invoked when `!skipTranslation && sourceLanguage !== targetLanguage`.
+6. **DB connection:** Opens its **own** `mysqli_connect` (not from `main.php`), sets timezone and charset.
+7. **Message persistence (transactional):**
+   - Looks up `tam_conversations_master_id` from `tam_connections_conversation_master` by `room`. Invalid room → exception.
+   - Inserts into `tam_connections_conversation_messages` with original + translated text, detected language, timezone, and timestamp.
+   - Updates `tam_conversations_user_id_1_last_login` or `tam_conversations_user_id_2_last_login` based on sender match.
+   - **Weak translation guard:** `is_weak_translation()` — if the translated text is too similar to the original (and languages differ), the insert is **skipped**.
+8. **Empty text:** Returns `code:1` with empty text, `"en"` / `"English"`, and current timestamp display (no DB write).
+
+**Catch envelope (Throwable):**
+
+```json
+{ "code": 0, "text": "Error : <exception message>", "timestamp_display": "<formatted date>" }
+```
 
 ## 52. Get Default Countries
 
@@ -2752,7 +3484,7 @@ Top-level JSON only (no `status` / `message` envelope):
 }
 ```
 
-### `countries[]` row
+`countries[]`
 
 | Field | Type | Notes |
 |---|---|---|
@@ -2760,7 +3492,7 @@ Top-level JSON only (no `status` / `message` envelope):
 | country_code | string | `countries.country_code`. |
 | code | string | Duplicate of `country_code` (same column). |
 
-### `currencies[]` row
+`currencies[]`
 
 | Field | Type | Notes |
 |---|---|---|
@@ -2771,3 +3503,4 @@ Top-level JSON only (no `status` / `message` envelope):
 ## Failure Response
 
 Same top-level keys; `countries` and `currencies` are empty arrays; defaults remain `IN` / `INR`.
+
