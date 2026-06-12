@@ -4,7 +4,7 @@
 
 - **Rate Limiting:** Public routes are throttled at **20 req/min**. Authenticated routes are throttled at **40 req/min** (based on your Laravel api.php middleware).
 
-- **HTTP Status Codes:** Most APIs return 200 OK universally, using an internal "code": 1 (success) or "code": 0 (failure) schema. Hard failures (missing files/auth) return 403 Forbidden, 404 Not Found, or 500 Internal Server Error.
+- **HTTP Status Codes:** Most apis return 200 OK universally, using an internal "code": 1 (success) or "code": 0 (failure) schema. Hard failures (missing files/auth) return 403 Forbidden, 404 Not Found, or 500 Internal Server Error.
 
 - **Security:** `html/api/v1/*.php` files exit with plain `Forbidden` unless `SECURE_API_ACCESS` is defined. `html/api.php` defines that constant before including the mapped script.
 
@@ -14,6 +14,7 @@
 - [Authentication](#authentication)
 - [Response Standards](#response-standards)
   - [Nested objects and arrays](#nested-objects-and-arrays)
+  - [Razorpay payment amounts](#razorpay-payment-amounts)
 - [Base URL](#base-url)
   - [Documentation depth by section](#documentation-depth-by-section)
 - [1. Check Counsellor Access](#1-check-counsellor-access)
@@ -56,6 +57,7 @@
 - [21. Third Banner (Dashboard Data)](#21-third-banner-dashboard-data)
 - [22. Update User Access Code](#22-update-user-access-code)
 - [23. Update User Information](#23-update-user-information)
+- [23.1 Ambassador Program Signup (Legacy Web)](#231-ambassador-program-signup-legacy-web)
 - [24. Validate Referral Code](#24-validate-referral-code)
 - [25. Chat Summary (Feel Better in 15)](#25-chat-summary-feel-better-in-15)
 - [26. Check Chat Usage (FB15 / TOT)](#26-check-chat-usage-fb15--tot)
@@ -103,6 +105,7 @@
 - [Failure Response](#failure-response-3)
 - [Notes](#notes-2)
 - [37. Connections Get Messages](#37-connections-get-messages)
+- [37a. Connections Mark Messages Seen](#37a-connections-mark-messages-seen)
 - [Endpoint](#endpoint-4)
 - [Purpose](#purpose-4)
 - [Authentication](#authentication-5)
@@ -168,6 +171,7 @@
 - [50a. YSAM Review Message](#50a-ysam-review-message)
 - [51. YSAM Translate](#51-ysam-translate)
 - [52. Get Default Countries](#52-get-default-countries)
+- [53. API Health (probe)](#53-api-health-probe)
 - [Endpoint](#endpoint-10)
 - [Purpose](#purpose-10)
 - [Authentication](#authentication-11)
@@ -185,7 +189,8 @@ The Flutter app calls **Laravel** routes (for example POST {APP_BASE}/user_conve
 **Runtime rules (implemented):**
 
 - **Connections dashboard (inbox):** Laravel returns { "status", "message", "data": { "conversations", "total_unread", "discover_groups", "dashboard_message", … } }. Clients also accept a **legacy-flat** shape where conversations and dashboard_message appear at the **root** (backwards compatibility).
-- **Connections get messages (`get_connection_messages`):** Canonical upstream fields read in `html/api/v1/tam_connections_get_messages.php` are `room_name`, `lastSeq`, `beforeSeq`, `user_id` (or JWT-populated `auth_user_id` via `$_REQUEST`), and `user_lang`. Laravel may accept additional aliases; they are not read by this legacy file.
+- **Connections get messages (`get_connection_messages`):** Canonical upstream fields read in `html/api/v1/tam_connections_get_messages.php` are `room_name`, `lastSeq`, `beforeSeq`, `user_id` (or JWT-populated `auth_user_id` via `$_REQUEST`), and `user_lang`. Laravel proxy: `POST /api/get_connection_messages` (Passport). Legacy decrypts `message_text` in `tam_connections_replay_message_row()`; replay rows for the sender include optional `delivery_status` (`sent` \| `delivered` \| `seen`). Laravel may accept additional aliases; they are not read by this legacy file.
+- **Connections mark messages seen (`connections_mark_messages_seen`):** Canonical upstream fields: `room_name`, `room_type` (`S` \| `G`, optional — inferred when omitted), `message_ids` (JSON array or JSON string of `client_message_id` values), `user_id` / `auth_user_id`, optional `user_lang`. Laravel proxy: `POST /api/connections_mark_messages_seen` → legacy → `ConnectionsMessageSeenService` publishes advisory `message_status` (`seen`) on Redis `chat_messages`.
 - **Connections send message:** Upstream persists **reply_to_message_id** only. The Laravel proxy accepts **reply_to_id** as an alias when reply_to_message_id is omitted (logged in app.debug only). Fields such as reply_to_content / reply_to_sender / timestamp_browser are **not** read by the legacy send handler and are not forwarded as distinct upstream fields.
 - **Connections group subscribe:** Upstream requires **user_id** (reservation user id) and **group_id**.
 
@@ -198,9 +203,22 @@ The Flutter app calls **Laravel** routes (for example POST {APP_BASE}/user_conve
 - **Broad inventory:** From tam-admin-application/tools/, run php governance_build_inventory.php (regenerates route/env/api.json lists).
 - **Drift telemetry (mobile):** Repeated invalid **WebSocket token** JSON envelopes (HTTP 200 but missing data.jwt) emit a bounded Crashlytics breadcrumb (see ContractDriftWatch). Repeated **malformed WebSocket wire frames** (JSON decode failure, non-object root, or non-string type) emit a bounded Crashlytics event (ContractDriftWatch.noteMalformedWsWire). Maintenance unknown-key checks remain **debug-only** (debugAssertMaintenanceResponseContract).
 
+### Documentation maintenance (`tools/audit_apis_md.php`)
+
+**Last full audit:** 2026-06-06 — **55 / 55** `api.json` keys clean (`tools/audit_apis_md_report.json`).
+
+| Check | What it does |
+|-------|----------------|
+| `api.json` coverage | Every `allowedApis` key must appear in `apis.md` and have a matching `html/api/v1/{v1}.php` file. |
+| POST parameter drift | Flags `$_POST` / `$_REQUEST` keys not mentioned near the API section in `apis.md`. |
+| Envelope hint | Classifies each handler as `status_message`, `code_text`, or `mixed` for reviewer focus. |
+| `auth_user_id` | Flags handlers that read JWT-populated `auth_user_id` but do not document it nearby. |
+
+Run before merging API changes: `D:\php-8.3\php.exe tools/audit_apis_md.php` (human-readable), `--json` for CI, or `--out=tools/audit_apis_md_report.json` (default report path). Exit code `0` when all 55 `api.json` keys have a numbered section with endpoint path and documented POST keys. **Runtime behavior always wins** over this document when they disagree — update `apis.md` after fixing or accepting the code path.
+
 ### Operational governance (Phase 3 — release & deployment safety)
 
-**Source of truth:** Runtime code (Laravel proxies, CurlPhp.php, legacy html/api/v1/*.php, Flutter parsers) wins over this document. Update APIs.md and TAM_FLUTTER/docs/governance/snapshots/critical_api_envelopes.json when those layers change.
+**Source of truth:** Runtime code (Laravel proxies, CurlPhp.php, legacy html/api/v1/*.php, Flutter parsers) wins over this document. Update apis.md and TAM_FLUTTER/docs/governance/snapshots/critical_api_envelopes.json when those layers change.
 
 | Layer | Role |
 |-------|------|
@@ -224,6 +242,8 @@ The Flutter app calls **Laravel** routes (for example POST {APP_BASE}/user_conve
 | status | roomUsers (list of maps with userId or string ids) **or** userId + online | Presence for active recipient. |
 | typing | from, typing (bool) | Ignores self-typing; 3s debounce timer. |
 | Client → server join / leave | room, from | Ref-counted per feature owners. |
+
+**Mark seen (HTTP, authoritative):** See [§37a Connections Mark Messages Seen](#37a-connections-mark-messages-seen). Laravel route `POST /api/connections_mark_messages_seen`; legacy `POST /api.php/v1/connections_mark_messages_seen`.
 
 **Contract ownership:** Product-critical HTTP paths are curated in TAM_FLUTTER/tool/governance/contract_governance_crosswalk.dart. Broad route/env lists are **generated** (governance_build_inventory.php) — treat as inventory, not behavioral specs.
 
@@ -270,6 +290,47 @@ Numeric and boolean-like fields may appear as strings or native JSON types depen
 
 Where responses include arrays of objects (for example `conversations[]`, `messages[]`, `data.posts[]`), this document lists **each object field** in a table: type, presence (`S`ingle / `G`roup / both), and runtime notes. Endpoint sections that still use only a minimal JSON example are marked as **summary**; prefer the field tables when present.
 
+### Razorpay payment amounts
+
+Razorpay uses **two different unit systems** on the same order/payment. Clients must not assume all numeric fields are paise/cents.
+
+| Field / location | Unit | Type | Notes |
+|------------------|------|------|-------|
+| `razorpay_json.amount` (§15 initiate) | **Minor** | integer | Value sent to Razorpay Checkout / Flutter SDK. Scale = `10^currency_minor_unit`. |
+| Razorpay `order.amount`, `payment.amount` | **Minor** | integer | Same scale as above. |
+| Razorpay `payment.fee`, `payment.tax`, `payment.base_amount` | **Minor (INR paise)** | integer | Always divided by 100 server-side for INR ledger math, even on FX payments. |
+| Order/payment `notes.payment_gst_fees`, `notes.payment_price_wo_fees`, `notes.convenience_charge` | **Major** | string/number | Human-readable payment-currency amounts. **Never** divide by 100 when reading notes. |
+| `notes.note_amount_unit` | — | string | Always `"major"` on newly created orders. |
+| `notes.note_amount_currency` | — | string | ISO code for monetary note fields (often user/display currency on subscription, payment currency on counselling checkout). |
+| `notes.allocation[].payment_due` | **Major** | number | Payment-currency major units per outstanding item (web counselling checkout). |
+
+**Exponent source:** `currencies.currency_minor_unit` (0, 2, or 3) via `get_currency_details()` → `payment_decimal_places`. Matches [Razorpay supported currencies](https://razorpay.com/docs/payments/payments/international-payments/#supported-currencies).
+
+**Conversion helpers (legacy PHP):** `html/includes/tam_payment_amount_helpers.php` — `tam_to_minor_units()`, `tam_from_minor_units()`, `tam_build_razorpay_order_notes()`, `tam_assert_razorpay_payment_amounts()`.
+
+**Amount examples by currency** (same major payable, different `amount` integer):
+
+| Currency | `currency_minor_unit` | Major payable | `amount` (minor) sent to Razorpay |
+|----------|----------------------|---------------|-----------------------------------|
+| INR | 2 | ₹1500.00 | `150000` |
+| USD | 2 | $19.99 | `1999` |
+| JPY | 0 | ¥1500 | `1500` |
+| KWD | 3 | 1.234 KWD | `1230` (last digit zero per Razorpay 3-decimal rule) |
+
+**§15 `razorpay_json` parsed object — key amount fields:**
+
+| Field | Type | Unit | Example (INR) | Example (USD) | Example (JPY) |
+|-------|------|------|---------------|---------------|---------------|
+| `amount` | integer | minor | `150000` | `1999` | `1500` |
+| `currency` | string | — | `"INR"` | `"USD"` | `"JPY"` |
+| `notes.payment_price_wo_fees` | string | major | `"1271.19"` | `"16.94"` | `"1271"` |
+| `notes.payment_gst_fees` | string | major | `"228.81"` | `"3.05"` | `"0"` |
+| `notes.note_amount_unit` | string | — | `"major"` | `"major"` | `"major"` |
+
+**Confirmation (§20):** Before posting, the server calls `tam_assert_razorpay_payment_amounts()` — order and payment minor amounts must match, and (when an `INITIATED` row exists) must match `reservation_payments.payment_price` in payment currency. Mismatch returns localized `error_payment_amount_mismatch` (HTTP 200 with `"code":"0"` or exception path depending on handler).
+
+**Automated tests:** `tam-admin-application/tests/unit/Payments/RazorpayAmountHelpersTest.php` (`php artisan test --filter=RazorpayAmount`).
+
 ## Base URL
 
 text
@@ -283,7 +344,13 @@ All endpoints below are relative to the base URL.
 
 ### Documentation depth by section
 
-Field-level **Runtime (`html/api/v1/...`)** subsections (request echo shapes, nested tables) are now included for **all sections**: **§1–§29**, **§30 Get Complete YSAM Post**, **§31 Google Audio Transcribe**, **§32 List YSAM Posts**, **§34–§42** (Connections + user load), **§43–§51**, **§50a YSAM Review Message**, **§52 Get Default Countries**. Every section has been runtime-traced against its matching `html/api/v1/*.php` handler.
+Field-level **Runtime (`html/api/v1/...`)** subsections document request/response shapes per handler. Re-validate after code changes with:
+
+```bash
+D:\php-8.3\php.exe tools/audit_apis_md.php
+```
+
+The script cross-checks every `api.json` `allowedApis` key against `html/api/v1/{script}.php` (POST parameters, envelope style) and `docs/apis.md` coverage. Exit code `0` = no structural gaps; non-zero lists APIs needing doc updates.
 
 ## 1. Check Counsellor Access
 
@@ -380,20 +447,17 @@ Checks if the application is currently under maintenance and returns the availab
 
 - **Rate Limit:** 20 requests / minute (Public Route)
 
-- **Security Notes:** Unauthenticated. Relies on Firebase AppCheck to prevent abuse.
+- **Security Notes:** Laravel mobile route `POST /check_maintenance` is public (throttle only). **Direct** `html/api.php` v1 calls still require `Authorization: Bearer` per global §Authentication. Firebase App Check applies at the Laravel layer when configured.
 
-**Runtime (`html/api/v1/api_check_maintenance.php`):** response is a single JSON **object** (no wrapper). Keys and semantics:
+**Runtime (`html/api/v1/api_check_maintenance.php`):** response is a single JSON **object** (no wrapper). Emitted keys (after `finally` normalization):
 
 | Key | When present | Type / meaning |
 |-----|----------------|----------------|
-| `MAINTENANCE_ACTIVE` | Always | bool. From SQL `app_update` when a maintenance row is active; default idle object uses `false`. |
-| `UPDATION_INPROGRESS` | Always (added at emit time) | bool. **Mirror of `MAINTENANCE_ACTIVE`** so Flutter `MaintenanceConfig.globalMaintenanceInProgress` matches Laravel-proxied legacy responses. |
+| `UPDATION_INPROGRESS` | Always at emit | bool. `true` when an active maintenance row exists and `app_update` drives global maintenance UI; idle default `false`. (`MAINTENANCE_ACTIVE` is stripped before echo.) |
+| `APP_UPDATE_VERSION` | Always | string. Target app version from SQL when `app_update == 1`; else `""`. |
 | `MESSAGE_TITLE`, `MESSAGE`, `LIVE_BACK_TIME` | Always | strings. `LIVE_BACK_TIME` is ISO-8601 UTC (`Y-m-d\TH:i:s\Z`) when a row exists; else `""`. |
-| `short_message` | Idle template | string (default `""`). Lowercase key on the **idle** payload only. |
-| `SHORT_MESSAGE` | Active maintenance row | string. Set to PHP constant `maintenance_short_text` in the active branch (short DB column is selected but not bound into `$maintenance`; chip text is usually this constant). |
-| `REGISTRATION`, `FEEL_BETTER_IN_15`, `THERAPY_OVER_TEXT`, `NIGHT_AUXIE`, `TROOPERS_TOGETHER`, `LIBRARY`, `RESOURCES`, `ASSESSMENTS`, `CONNECTIONS`, `YSAM` | Always | bool. Values are the SQL `*_disabled` / `tam_*_disabled` flags cast with `(bool)…` — **`true` means that area is turned OFF (disabled)** under maintenance, not “enabled”. |
-
-**Flutter note:** `MaintenanceConfig.isFeatureEnabled` assumes JSON `true` means **enabled**. That matches Laravel only if the upstream payload is normalized; for **raw** legacy semantics above, the booleans are **inverted vs that comment**. Treat PHP as source of truth for `html/api/v1` or add a mapping layer in the proxy.
+| `SHORT_MESSAGE` | Always at emit | string. From `maintenance_short_text` constant when active; idle `""`. (`short_message` lowercase key is renamed/unset in `finally`.) |
+| `REGISTRATION`, `FEEL_BETTER_IN_15`, `THERAPY_OVER_TEXT`, `NIGHT_AUXIE`, `TROOPERS_TOGETHER`, `LIBRARY`, `RESOURCES`, `ASSESSMENTS`, `CONNECTIONS`, `YSAM` | Always | bool. **`true` = module enabled** (`!(bool)$*_disabled` from SQL). Idle template defaults all to `true`. |
 
 **Parameters:**
 
@@ -412,29 +476,27 @@ curl -X POST https://[BASE_URL]/api.php/v1/check_maintenance \
 -d "timezone=America/New_York"
 
 
-**Success Schema (200 OK):** (idle example — all feature flags `false` = nothing disabled)
+**Success Schema (200 OK):** (idle example — feature flags `true` = enabled)
 
 json
 {
-"MAINTENANCE_ACTIVE": false,
 "UPDATION_INPROGRESS": false,
+"APP_UPDATE_VERSION": "",
 "MESSAGE_TITLE": "",
 "MESSAGE": "",
 "LIVE_BACK_TIME": "",
-"REGISTRATION": false,
-"FEEL_BETTER_IN_15": false,
-"THERAPY_OVER_TEXT": false,
-"NIGHT_AUXIE": false,
-"TROOPERS_TOGETHER": false,
-"LIBRARY": false,
-"RESOURCES": false,
-"ASSESSMENTS": false,
-"CONNECTIONS": false,
-"YSAM": false,
-"short_message": ""
+"REGISTRATION": true,
+"FEEL_BETTER_IN_15": true,
+"THERAPY_OVER_TEXT": true,
+"NIGHT_AUXIE": true,
+"TROOPERS_TOGETHER": true,
+"LIBRARY": true,
+"RESOURCES": true,
+"ASSESSMENTS": true,
+"CONNECTIONS": true,
+"YSAM": true,
+"SHORT_MESSAGE": ""
 }
-
-** Note (legacy PHP):** for the keys above that mirror SQL `*_disabled` columns, **`true` = that module is disabled / blocked** during maintenance. Use `MAINTENANCE_ACTIVE` / `UPDATION_INPROGRESS` for the global “full maintenance” shell driven by `app_update`.
 
 ## 3. Check Merge Accounts
 
@@ -601,7 +663,7 @@ json
 json
 {
 "response_code": "-1",
-"message": "Email id provided is a disposable id. [BASE_URL] (tempmail.com) is invalid.",
+"message": "Email id provided is a disposable id. Domain (tempmail.com) is invalid.",
 "status": "failure",
 "data": ""
 }
@@ -915,7 +977,7 @@ Returns a comprehensive summary of the user's active subscription plan, feature 
 
 | **Name**          | **Type** | **Required** | **Description**                |
 |-------------------|----------|--------------|--------------------------------|
-| user_reference_id | Integer  | Yes          | User ID (reservation users).                       |
+| user_reference_id | Integer  | Conditional  | User ID (reservation users). Required unless `user_email` or `user_key` resolves the user via `get_user_id_by_primary_login`. |
 | user_email        | String   | No           | Primary user email.            |
 | user_key          | String   | No           | Fallback for user email/phone. |
 | user_lang         | String   | No           | Language code.                 |
@@ -925,10 +987,10 @@ Returns a comprehensive summary of the user's active subscription plan, feature 
 
 json
 {
-  "response_code": 1,
-  "status": "success",
-  "message": "success",
-  "data": {
+"response_code": 1,
+"status": "success",
+"message": "success",
+"data": {
     "status": "1",
     "regime": "new",
     "plan_show_app": "Premium active till 31 Dec 2026",
@@ -940,7 +1002,7 @@ json
     "category_id": "3",
     "trial_category": "N",
     "end_date": "2026-12-31 23:59:59",
-    "fb15_minutes_per_day": 60,
+"fb15_minutes_per_day": 60,
     "fb15_minutes_per_month": 1800,
     "thot_words_per_month": 100000,
     "thot_response_time": 24,
@@ -1125,18 +1187,33 @@ Creates a Razorpay Order ID for purchasing a subscription, factoring in GST, app
 |-------------------|----------|--------------|-----------------------------|
 | user_reference_id | String   | Yes          | User ID (reservation users).                    |
 | plan_type         | String   | Yes          | Subscription Category Code. |
-| subscription_price | String | No | Posted into `$_POST`; passed into pricing math (often empty; server uses category list price). |
-| subscription_discount | String/Number | No | Percent discount from client; default `0`. |
+| promo_attestation | String   | No           | Deep-link promo attestation token; consumed via `tam_consume_subscription_promo_attestation()` when present. |
 | referral_code     | String   | No           | Ambassador referral code.   |
 | user_lang         | String   | No           | Language code.              |
 
+**Not read by legacy handler:** `subscription_price`, `subscription_discount` (pricing comes from `calculate_subscription_pricing()` + DB category/corporate/referral logic only).
+
 **Success Schema (200 OK):** **`razorpay_json` is a JSON-encoded string** (the PHP script sets `"razorpay_json" => json_encode($json_data)`), not a nested object. Clients must `JSON.parse` that string if they need an object.
+
+The top-level `amount` inside the parsed `razorpay_json` object is Razorpay **minor units** (integer), **not** rupees/dollars. See [Razorpay payment amounts](#razorpay-payment-amounts) for INR / USD / JPY / KWD examples. Monetary fields inside `notes` are **major units** and must not be divided by 100.
 
 json
 {
   "code": "1",
-  "razorpay_json": "{\"key\":\"...\",\"amount\":150000,\"currency\":\"INR\",\"order_id\":\"order_...\",\"prefill\":{...},\"notes\":{...},\"theme\":{...},\"send_sms_hash\":true,\"method\":{...}}"
+  "razorpay_json": "{\"key\":\"...\",\"amount\":150000,\"currency\":\"INR\",\"user_currency\":\"INR\",\"payment_currency\":\"INR\",\"order_id\":\"order_...\",\"prefill\":{...},\"notes\":{\"merchant_order_id\":\"...\",\"category\":\"PREMIUM\",\"payment_price_wo_fees\":\"1271.19\",\"payment_gst_fees\":\"228.81\",\"price_id\":\"12345\",\"note_amount_unit\":\"major\",\"note_amount_currency\":\"INR\"},\"theme\":{...},\"send_sms_hash\":true,\"method\":{...}}"
 }
+
+
+**Multi-currency examples (parsed `razorpay_json` excerpts):**
+
+| Scenario | `amount` | `currency` | `notes.note_amount_currency` |
+|----------|----------|------------|------------------------------|
+| Domestic INR subscription | `150000` | `INR` | `INR` (major ₹1500.00) |
+| USD payment (2 dp) | `1999` | `USD` | user/display currency code |
+| JPY payment (0 dp) | `1500` | `JPY` | user/display currency code |
+| USD fallback when display ≠ payment | `1999` | `USD` | user currency; `payment_currency` also `USD` |
+
+**Additional runtime fields inside `razorpay_json`:** `user_currency`, `payment_currency`, `conversion_rate_to_user_currency`, `conversion_rate_to_payment_currency` (FX metadata for the Flutter checkout UI).
 
 
 ### Runtime (`html/api/v1/api_initiate_subscription_payment.php`)
@@ -1146,7 +1223,7 @@ json
 | `"1"` | `razorpay_json` string as above (Razorpay checkout options + `order_id`). |
 | `"0"` | `message` only — repurchase blocked, lite cap, missing user, gateway/DB `catch`, or invalid params (`error_payment_generic` / localized equivalents). |
 
-**Additional notes:** `plan_functions.php` + `config_plans_text_{user_lang}.php`; transaction name `api_initiate_subscription_payment`. Repurchase rules compare current plan end vs **3 days** and lite **1 day** rules per script.
+**Additional notes:** `plan_functions.php` + `config_plans_text_{user_lang}.php`; transaction name `api_initiate_subscription_payment`. Repurchase window constant `UPGRADE_ONLY_WINDOW` = **5 days** (`5 * 24 * 3600` seconds). Lite **1 day** overlap rules still apply per script.
 
 ## 16. Send Registration OTP
 
@@ -1322,7 +1399,7 @@ json
       },
       {
         "id": "card_PREM1M",
-        "plan_code": "PREM1M",
+"plan_code": "PREM1M",
         "type": "C",
         "plan_name": "Premium Monthly",
         "recommended_flag": "Y",
@@ -1435,7 +1512,8 @@ curl -X POST https://[BASE_URL]/api.php/v1/subscription_payment_confirmation \
 json
 {
 "code": "1",
-"message": "Your Premium plan is now active."
+"message": "Your Premium plan is now active.",
+"payment_status": "CAPTURED"
 }
 
 
@@ -1445,7 +1523,9 @@ json
 |--------|------|
 | `"-1"` | Missing `razorpay_order_id`, `razorpay_payment_id`, or `razorpay_signature`. |
 | `"0"` | Signature verification failed (`error_transaction_invalid`), Razorpay order not `PAID` / payment_failed branches, DB/network `catch`, or other failures (`code` always string in these paths). |
-| `"1"` | Paid order processed; `message` from `plan_confirmation` constant with `XXXX` replaced by category name. |
+| `"1"` | Paid order processed; `message` from `plan_confirmation` constant with `XXXX` replaced by category name; **`payment_status`** echoes Razorpay payment status (e.g. `"CAPTURED"`). |
+
+**Amount verification:** After Razorpay signature verification, the handler normalizes order/payment entities and runs `tam_assert_razorpay_payment_amounts()` — `order.amount`, `payment.amount`, and (when present) the initiated `reservation_payments.payment_price` must agree in **minor units** for the payment currency. Failure surfaces as `"code":"0"` with localized `error_payment_amount_mismatch`. Ledger posting uses `process_razorpay_payment_logic()` (minor units on `payment.amount`; major units in `notes` only for audit metadata).
 
 **Transport:** `respondAndExit` echoes the raw JSON string stored in `$output_data`. **`HEAD`:** the main POST block is skipped; the connection is closed without a response body.
 
@@ -1601,6 +1681,108 @@ Modifies core profile details, including contact numbers, guardian information (
 
 Note: the script-level error uses `status` (not `code`) with value `"-1"`, while the helper's own errors use `code:"0"`.
 
+## 23.1 Ambassador Program Signup (Legacy Web)
+
+Self-service ambassador application flow served by the legacy PHP page `html/individual-ambassador-program.php`. This is **not** registered in `api.json` / Laravel `api.php`; it uses same-origin POST handlers on the page URL.
+
+**Eligibility:** Applicants must be **18 years or older** (validated client-side and in `create_ambassador_signup`). India-based individuals only (enforced operationally at admin approval).
+
+**Post-submit behaviour:** The applicant receives an **online confirmation only** (on-screen message + applicant email). Registration does **not** complete until an administrator approves the request in `cp_admin.php` and `create_new_ambassador_record` provisions `subscription_referral_master`.
+
+**Implementation:** `html/functions_ambassador.php` (`generate_validation_token`, `create_ambassador_signup`, `ambassador_email_already_registered`).
+
+### 23.1.1 Validate Email (send token)
+
+- **Endpoint:** `individual-ambassador-program.php?validate_email`
+- **Method:** POST (session cookie required)
+
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| ambassador_email | String | Yes | Applicant email. |
+| ambassador_name | String | No | Used in token email salutation. |
+
+**Response (`code` string):**
+
+| `code` | Meaning |
+|---|---|
+| `"1"` | Token emailed; session `ambassador_email_verified_status` set to `"N"`. |
+| `"0"` | Validation failure (invalid/disposable email, duplicate pending signup, or already an active ambassador). |
+
+Duplicate detection checks `tam_ambassador_signup`, `subscription_referral_master`, and linked `reservation_users` hashes via `ambassador_email_already_registered`.
+
+### 23.1.2 Confirm Email Token
+
+- **Endpoint:** `individual-ambassador-program.php?confirm_email_token`
+- **Method:** POST
+
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| token | String | Yes | 6-digit token from email; must match session `ambassador_email_token`. |
+| ambassador_email | String | Yes | Email being verified. |
+
+| `code` | Meaning |
+|---|---|
+| `"1"` | Token valid; returns HTML fragment for age/phone/gender/PAN fields. Session `ambassador_email_verified_status` → `"Y"`. |
+| `"0"` | Invalid token. |
+
+### 23.1.3 Complete Signup
+
+- **Endpoint:** `individual-ambassador-program.php?signup`
+- **Method:** POST
+
+Requires session `ambassador_email_verified_status == "Y"` and `ambassador_email_verified_value` matching posted `ambassador_email`.
+
+| **Name** | **Type** | **Required** | **Description** |
+|---|---|---|---|
+| ambassador_name | String | Yes | Full name. |
+| ambassador_email | String | Yes | Verified email. |
+| ambassador_age | Number | Yes | Completed years; **18–80**. |
+| ambassador_phone | String | Yes | Country code + national number (e.g. `91` + 10 digits). |
+| ambassador_gender | String | Yes | `M`, `F`, or `O`. |
+| ambassador_pan | String | Yes | PAN or `NA` / `N/A`. |
+
+| `code` | Meaning |
+|---|---|
+| `"1"` | Signup row inserted (`tam_ambassador_signup_approved = 'N'`). Applicant + admin emails sent (`ambassador_registration`). Online confirmation message returned. |
+| `"0"` | Email not authenticated, session mismatch, or already an active ambassador. |
+| `"3"` | Duplicate mobile/email signup or invalid phone. |
+| `"4"` | Age below 18 or above 80. |
+| `"5"` | Invalid gender. |
+| `"6"` | Invalid PAN. |
+
+**Notifications on successful signup:**
+
+| Recipient | `notification_type` | Producer |
+|---|---|---|
+| Applicant | `ambassador_registration` | `create_ambassador_signup` (applicant confirmation email) |
+| Admin approvers | `ambassador_registration` | `create_ambassador_signup` (admin alert) |
+
+**Admin approval (`cp_admin.php`):**
+
+1. Pending sign-ups load via `?update_sign_up_ambassador_div` → `getsignupambassadordetails()` (`tam_ambassador_signup_approved = 'N'`).
+2. **Approve** (India domicile): `.approve_ambassador` pre-fills the ambassador form; admin sets discounts/payouts and submits `?create_new_ambassador_record`.
+3. **Reject**: dedicated **Reject** button on each pending row (India and non-India). Non-India **Approve** also offers a reject shortcut. Calls `?reject_ambassador` with `rejection_reason` → `reject_ambassador_request()`.
+   - `non_india_domicile` — applicant outside India
+   - `ineligible` — does not meet program criteria (default)
+   - `duplicate` — duplicate application
+   - `incomplete` — missing or unverifiable information
+4. On successful approval, `create_new_ambassador_record`:
+   - Inserts `subscription_referral_master` + `subscription_referral_financials_master`
+   - Sets `tam_ambassador_signup_approved = 'Y'` for the linked `ambassador_signup_id`
+   - Sends welcome email + WhatsApp (`ambassador_registration`, ~3714)
+5. Rejection sets `tam_ambassador_signup_rejected = 'Y'` and emails the applicant using `build_ambassador_rejection_email_body()` for the selected `rejection_reason`.
+
+**Access:** `user_is_admin`, `user_is_manager`, `user_is_receptionist`, or `user_is_ambassador_admin`.
+
+**Registration status UI (`has_user_registered_previously`):**
+
+| Status | Meaning |
+|---|---|
+| `R` | Active ambassador (`subscription_referral_master`) |
+| `Y` | Signup row approved |
+| `N` | Signup pending admin approval |
+| `NR` | Not registered |
+
 ## 24. Validate Referral Code
 
 Validates an ambassador referral code to dynamically calculate and apply discounts (routing logic based on domestic vs international pricing).
@@ -1707,6 +1889,8 @@ Fetches LLM-powered summaries for a user's past "Feel Better in 15" chat session
 
 Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy Over Text" (THoT) based on the user's active subscription plan.
 
+**Laravel mobile route:** There is **no** direct `POST /api/check_chat_usage` route (removed from `routes/api.php`). FB15 assignment and other Laravel flows call `EntitlementService::checkChatUsage()` → `CurlPhp::api_check_chat_usage()` server-side. The legacy script below remains the **authoritative** entitlement implementation.
+
 - **Endpoint:** /api.php/v1/check_chat_usage
 
 - **Method:** POST
@@ -1757,8 +1941,8 @@ Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy O
 
 | Condition | `code` | Key fields |
 |---|---|---|
-| User empty | 0 | Exception message |
-| No active plan | 0 | Exception message |
+| User empty | 0 | `technical_issue` (via `catch`) |
+| No active plan | 0 | `technical_issue` (via `catch`) |
 | Cooling period active (FB15 only) | 0 | `text` with timer message, support buttons |
 | Global plan enabled | 1 | Unlimited; empty minutes/words |
 | Global plan disabled | 0 | `text` from global plan, access_code + support buttons |
@@ -1769,8 +1953,10 @@ Monitors and enforces usage limits for "Feel Better in 15" (FB15) and "Therapy O
 
 **Catch envelope (Throwable):**
 
+All `catch` paths set `text` to the localized **`technical_issue`** constant (MySQL errors and generic exceptions alike — exception messages are **not** echoed to clients).
+
 ```json
-{ "code": 0, "text": "<localized error constant>", "show_buttons": { "count": 2, "buttons": [/* support + close */] } }
+{ "code": 0, "text": "<technical_issue constant>", "show_buttons": { "count": 2, "buttons": [/* support + close */] } }
 ```
 
 ## 27. Audio Transcribe (Main)
@@ -1974,7 +2160,7 @@ Retrieves the full, un-truncated content of a specific "Your Story and Mine" (YS
 
 ```json
 {
-  "code": "1",
+"code": "1",
   "data": "<string: inner JSON from ysam_show_modal_story — clients must json-decode this string to obtain the object below>"
 }
 ```
@@ -2096,13 +2282,13 @@ Fetches a paginated feed of YSAM posts with optional filters for hashtags, categ
 
 ```json
 {
-  "code": "1",
-  "message": "",
-  "data": {
+"code": "1",
+"message": "",
+"data": {
     "code": 1,
     "count": 0,
     "data": []
-  }
+}
 }
 ```
 
@@ -2143,6 +2329,11 @@ When `user_reference_id` is non-empty (typical app call), each element includes 
 
 When `user_reference_id` is empty, `following` / `connected` / `ysam_conversation_active` differ (see `html/functions.php` around the two `ysam_titles[]` branches).
 
+**Catch envelope (Throwable):** flat top-level object — **not** wrapped in `status` / `data`:
+
+```json
+{ "code": 0, "count": 0, "message": "<localized high_traffic | technical_issue | processing_error>" }
+```
 
 ## 33. Connections Block User
 
@@ -2174,7 +2365,7 @@ Bearer required (`html/api.php`). `auth_user_id` is not read by this script.
 
 ```json
 {
-  "status": true,
+"status": true,
   "message": "<localized string>",
   "data": {
     "conversation_id": 0,
@@ -2197,7 +2388,7 @@ Representative shapes (all use `status` **false**, `data` **[]**, `message` loca
 | Condition | `message` source (constant name) |
 |---|---|
 | Invalid user ids | `processing_error` |
-| No conversation row for derived `tam_room_{min}_{max}` room | `error_blocking_user_text` |
+| No conversation row for derived `room_{min}_{max}` room | `error_blocking_user_text` |
 | Plan summary error | `user_plan_insufficient_for_block` |
 | Short / trial plan (`plan_duration` contains `day`) | `user_plan_insufficient_for_block` |
 | Update affects 0 rows | `error_blocking_user_text` |
@@ -2207,8 +2398,7 @@ Wrapper catch (e.g. missing user id before helper): `message` is exception strin
 
 ## Notes
 
-- Room name inside helper: `tam_room_{min(blocking,blocked)}_{max(blocking,blocked)}`.
-
+- Room name inside helper: `room_{min(blocking,blocked)}_{max(blocking,blocked)}` (stored in `tam_connections_conversation_master.tam_conversations_room_name`).
 
 ## 34. Connections Check Consent
 
@@ -2253,13 +2443,13 @@ Bearer required. Script does not read `auth_user_id`.
 
 ```json
 {
-  "status": true,
-  "message": "consent_required",
+"status": true,
+"message": "consent_required",
   "code": "2",
   "text": { },
   "consent_string": "<imploded constant text>",
-  "data": {
-    "required": true,
+"data": {
+"required": true,
     "guidelines": { }
   }
 }
@@ -2331,7 +2521,7 @@ Bearer required. Script does not read `auth_user_id`.
 
 ```json
 {
-  "status": true,
+"status": true,
   "message": "success",
   "data": {
     "allowed": true
@@ -2411,13 +2601,13 @@ When `code` is present, the script **replaces** the whole output with:
 
 ```json
 {
-  "status": true,
+"status": true,
   "message": "",
-  "data": {
-    "conversations": [],
+"data": {
+"conversations": [],
     "total_unread": 0,
-    "discover_groups": []
-  }
+"discover_groups": []
+}
 }
 ```
 
@@ -2472,9 +2662,11 @@ Inner JSON uses `"code": "0"` with root key **`error`** (no `text`). The dashboa
 POST /api.php/v1/get_connection_messages
 ```
 
+**Laravel proxy (mobile):** `POST /api/get_connection_messages` — Passport `auth:api`; forwards `user_id` from token `reference_user_id` (never trusts a mismatched client `user_id`). Pre-checks room access via `Crit002eRoomAccessService` (deny envelope below). Returns legacy JSON decoded as-is (HTTP 200).
+
 ## Purpose
 
-Returns up to **50** single-chat rows for one room (content field **not** decrypted in this endpoint), either newer than `lastSeq` or strictly older than `beforeSeq`.
+Returns up to **50** message rows for one **single-chat** room (`tam_connections_conversation_master`), either newer than `lastSeq` or strictly older than `beforeSeq`. Bodies are **decrypted** in `tam_connections_replay_message_row()` before echo.
 
 ## Authentication
 
@@ -2488,7 +2680,9 @@ Bearer required. User id resolution: `$_REQUEST['auth_user_id']` if set (JWT pat
 | user_id | string/int | Conditional | — | Required when JWT does not populate `auth_user_id`. |
 | lastSeq | mixed | No | 0 | Used only when `beforeSeq` is **0**; bound as integer for SQL `message_sequence > ?`. |
 | beforeSeq | integer | No | 0 | When `> 0`, selects rows with `message_sequence < ?` ordered DESC then reversed; fetches `pageLimit+1` to set `has_more_older`. |
-| user_lang | string | No | en | Loads `language_config/ysam_conversation/config_ysam_{user_lang}.php` only (for `missing_fields` / `conversation_not_found` / `technical_issue` constants). |
+| user_lang | string | No | en | Loads `language_config/ysam_conversation/config_ysam_{user_lang}.php` (for `missing_fields` / `technical_issue` constants). |
+
+`room_type` is **not** read by this script; room access is inferred via `tam_connections_assert_can_read_room(..., null)`.
 
 ## Success Response
 
@@ -2501,13 +2695,15 @@ Bearer required. User id resolution: `$_REQUEST['auth_user_id']` if set (JWT pat
       {
         "message_sequence": 1,
         "server_seq": 1,
-        "client_message_id": null,
+        "client_message_id": "uuid-or-null",
         "sender_id": 1,
-        "message_text": "<ciphertext from DB column tam_conversations_message_original; not decrypted in this endpoint>",
+        "message_text": "decrypted plain text",
         "message_type": "text",
         "attachment_url": null,
         "created_at": "YYYY-MM-DD HH:MM:SS",
-        "is_mine": true
+        "is_mine": true,
+        "original_message": null,
+        "delivery_status": "sent"
       }
     ],
     "has_more_older": false
@@ -2515,7 +2711,7 @@ Bearer required. User id resolution: `$_REQUEST['auth_user_id']` if set (JWT pat
 }
 ```
 
-### `data.messages[]` row (`tam_connections_get_messages.php`)
+### `data.messages[]` row (`tam_connections_replay_message_row`)
 
 | Field | Type | Notes |
 |---|---|---|
@@ -2523,25 +2719,103 @@ Bearer required. User id resolution: `$_REQUEST['auth_user_id']` if set (JWT pat
 | server_seq | integer | Same as `message_sequence`. |
 | client_message_id | string \| null | From DB. |
 | sender_id | integer | `tam_conversations_user_id`. |
-| message_text | string | **Ciphertext** from `tam_conversations_message_original` (not decrypted here). |
+| message_text | string | **Decrypted** plain text. Sender (`is_mine`) sees original; recipient sees remote translation when present, else original. |
 | message_type | string | From DB; defaults to `text` if null. |
-| attachment_url | string \| null | Signed URL when attachment filename column set. |
+| attachment_url | string \| null | Signed URL only when `tam_conversations_attachment_url` is populated. **Most attachment messages** store files in `tam_connections_attachments` (joined in `user_conversations_load` §42, not here) — expect **`null`** on replay for typical attachment sends. |
 | created_at | string | `tam_conversations_message_date`. |
 | is_mine | boolean | `sender_id` equals requesting user. |
+| original_message | string \| null | Present when remote decrypted text differs from original (translation path); else **null**. |
+| delivery_status | string | **Only when `is_mine` is true** and column `tam_conversations_message_status` exists. Wire values: `sent`, `delivered`, `seen` (SQL `read` maps to `seen`). |
 
 `attachment_url` is built by the local `generateAttachmentUrl` in `tam_connections_get_messages.php`: HMAC-SHA256 over `"{filename}|{exp}"` with `TAM_ATTACHMENT_SECRET`, URL prefix `TAM_BASE_URL + "/api.php?get_attachment=1&file=…&exp=…&sig=…"`. This differs from `functions_ysam.php::generateAttachmentUrl` (uses `hash('sha256', filename)` in the signed payload and `/api.php/v1/get_attachment?`). `html/api.php` attachment handling expects the **hashed-filename** variant and a request path containing `api.php/v1/`; clients must treat URL compatibility as deployment-specific.
 
 ## Failure Response
 
-| Case | Body |
-|---|---|
-| Missing `room_name` or user id | `{"status":false,"message":"<missing_fields>","data":[]}` |
-| Unknown room | `{"status":false,"message":"<conversation_not_found>","data":[]}` |
-| DB Throwable | `{"status":false,"message":"<technical_issue>","data":[]}` |
+| Case | HTTP | Body |
+|---|---|---|
+| Missing `room_name` or user id | 200 | `{"status":false,"message":"<missing_fields>","data":[]}` |
+| Room not found or read access denied | 200 | `{"status":false,"message":"<missing_fields>","data":[]}` (`tam_connections_assert_can_read_room` failure uses the same constant) |
+| DB Throwable | 200 | `{"status":false,"message":"<technical_issue>","data":[]}` |
+| Laravel: missing `reference_user_id` | 422 | `{"status":false,"message":"web_user_id_required"}` |
+| Laravel: room access denied | 200 | `{"status":false,"message":"missing_fields","data":[]}` |
 
 ## Notes
 
-- `message_text` in this endpoint is **still encrypted at rest** in DB; PHP selects column `tam_conversations_message_original` into the array key `message_text` without decrypting (runtime returns ciphertext strings for content).
+- Message bodies are encrypted at rest; this endpoint decrypts via `safeDecrypt()` before returning `message_text`.
+- For initial room open with block UI metadata, use `user_conversations_load` (§42). This endpoint is for gap recovery (`lastSeq`) and older history (`beforeSeq`).
+
+## 37a. Connections Mark Messages Seen
+
+## Endpoint
+
+```text
+POST /api.php/v1/connections_mark_messages_seen
+```
+
+**Laravel proxy (mobile):** `POST /api/connections_mark_messages_seen` — Passport `auth:api`; actor is token `reference_user_id`. On success returns `{"status":true,"message":"success","data":{"updated":[...]}}` (HTTP 200). After legacy persistence, Laravel publishes advisory WebSocket `message_status` with `status: "seen"` on Redis channel `chat_messages` (not authoritative; SQL is source of truth).
+
+## Purpose
+
+Persists seen state for TAM Connections:
+
+- **Single chat (`room_type` = `S`):** Sets `tam_conversations_message_status = 'read'` for peer messages (not sender's own) matching `client_message_id`; resets `tam_conversation_summary` unread counters and updates `last_seen` for the viewer.
+- **Group chat (`room_type` = `G`):** Clears `tam_group_unread.unread_count` for the viewer; per-message SQL status is not updated (WS advisory only for listed `message_ids`).
+
+## Authentication
+
+Bearer required. User id: `$_REQUEST['auth_user_id']` if set, else `$_POST['user_id']`.
+
+## Request Parameters
+
+| Parameter | Type | Required | Default | Notes |
+|---|---|---|---|---|
+| room_name | string | Yes | — | Trimmed; empty → failure. |
+| message_ids | array \| JSON string | Yes | — | Non-empty list of `client_message_id` values. Legacy accepts JSON string in POST (decoded in PHP). |
+| room_type | string | No | inferred | `S` or `G` (case-insensitive). When omitted, inferred from `tam_connections_conversation_room_exists` / `tam_connections_group_room_exists`. |
+| user_id | string/int | Conditional | — | Required when JWT does not populate `auth_user_id`. |
+| user_lang | string | No | en | Loads YSAM conversation language constants. |
+
+## Success Response
+
+```json
+{
+  "status": true,
+  "message": "success",
+  "data": {
+    "updated": [
+      {
+        "client_message_id": "abc-123",
+        "sender_id": 42
+      }
+    ]
+  }
+}
+```
+
+### `data.updated[]` row (`tam_connections_mark_messages_seen`)
+
+| Field | Type | Notes |
+|---|---|---|
+| client_message_id | string | Message id that was processed. |
+| sender_id | integer \| null | Peer sender user id for single-chat SQL updates; **null** for group rooms (advisory list only). |
+
+Empty `updated` when ids were already read, not found, or viewer lacks room access (legacy still returns `status: true` only when handler entered the success branch with valid fields and `tam_connections_assert_can_read_room` passed).
+
+## Failure Response
+
+| Case | HTTP | Body |
+|---|---|---|
+| Missing user, `room_name`, or `message_ids` | 200 | `{"status":false,"message":"<missing_fields>","data":{"updated":[]}}` |
+| Room read access denied | 200 | `{"status":false,"message":"<missing_fields>","data":{"updated":[]}}` |
+| Uncaught Throwable | 200 | `{"status":false,"message":"error","data":{"updated":[]}}` |
+| Laravel: missing `reference_user_id` | 422 | `{"status":false,"message":"web_user_id_required"}` |
+| Laravel: missing `room_name` or `message_ids` | 422 | `{"status":false,"message":"missing_fields"}` |
+| Laravel: room access denied | 200 | `{"status":false,"message":"missing_fields","data":[]}` |
+
+## Notes
+
+- Authoritative seen state is SQL (`tam_conversations_message_status` / group unread tables). WebSocket `message_status` / `seen` frames are advisory for sender UI refresh.
+- Replay after mark-seen: `get_connection_messages` returns `delivery_status: "seen"` on the sender's own rows when SQL status is `read`.
 
 
 ## 38. Connections Group Subscribe
@@ -2572,9 +2846,9 @@ Bearer required. Script does not read `auth_user_id`.
 
 ```json
 {
-  "status": true,
+"status": true,
   "message": "<success_subscribing constant>",
-  "data": []
+"data": []
 }
 ```
 
@@ -2614,9 +2888,9 @@ Same as subscribe: `user_id`, `group_id`, optional `user_lang` for error constan
 
 ```json
 {
-  "status": true,
+"status": true,
   "message": "<success_unsubscribing constant>",
-  "data": []
+"data": []
 }
 ```
 
@@ -2657,11 +2931,11 @@ Bearer required.
 
 ```json
 {
-  "status": true,
+"status": true,
   "code": "1",
   "text": "<consent_registered constant>",
   "message": "<consent_registered constant>",
-  "data": []
+"data": []
 }
 ```
 
@@ -2734,9 +3008,9 @@ Validated with `finfo_file` MIME (not extension). Max size `CONNECTIONS_MAX_ATTA
 
 ```json
 {
-  "status": true,
-  "message": "success",
-  "data": {
+"status": true,
+"message": "success",
+"data": {
     "text": "<plaintext sender message>",
     "message_sequence": 1,
     "client_message_id": null,
@@ -2747,7 +3021,7 @@ Validated with `finfo_file` MIME (not extension). Max size `CONNECTIONS_MAX_ATTA
     "sender_date_display": "Mon, 01 Jan 2026 (03:45 pm)",
     "recipient_text": "<translated or original>",
     "recipient_date_display": "Mon, 01 Jan 2026 (03:45 pm)"
-  }
+}
 }
 ```
 
@@ -2847,9 +3121,9 @@ On success `app_tam_connections_messages` returns a PHP array echoed as JSON:
 
 ```json
 {
-  "status": true,
+"status": true,
   "message": "success",
-  "data": {
+"data": {
     "room_name": "",
     "conversation_active": true,
     "blocked_by_current_user": false,
@@ -2861,7 +3135,7 @@ On success `app_tam_connections_messages` returns a PHP array echoed as JSON:
     "show_block_user_flag": "Y",
     "block_user_button_text": "",
     "block_user_confirmation_text": ""
-  }
+}
 }
 ```
 
@@ -2899,9 +3173,10 @@ On success `app_tam_connections_messages` returns a PHP array echoed as JSON:
 | is_mine | boolean | |
 | translated | boolean | True when remote ciphertext differs from original ciphertext. |
 | original_message | string \| null | Plain original when `translated` is true; else **null**. |
+| delivery_status | string | **Only when `is_mine` is true** and `tam_conversations_message_status` column exists. Values: `sent`, `delivered`, `seen`. |
 | reply_to | object \| null | See below. |
 
-**Group (`connection_type` = `G`):** same keys except **`client_message_id`** is always **null** in PHP; **`translated`**, **`original_message`** are **omitted** (single-only return shape); `message_text` is decrypted group message body.
+**Group (`connection_type` = `G`):** same keys except **`client_message_id`** is always **null** in PHP; **`translated`**, **`original_message`**, **`delivery_status`** are **omitted** (single-only return shape); `message_text` is decrypted group message body.
 
 ### `reply_to` object (`build_reply_block`, when non-null)
 
@@ -2938,6 +3213,191 @@ Helper failure (`status` false from `app_tam_connections_messages`):
 ## Notes
 
 - Pagination `mode` / `cursor` are **not** exposed as POST inputs in `tam_user_load_conversations.php`; only the `initial` / `0` path is used. Older history uses `get_connection_messages` with `beforeSeq` / `lastSeq`.
+
+## 42a. ThOT Async — Replay Messages (Stage 2)
+
+Authoritative SQL history for Therapy Over Text (ThOT/TOT). Does **not** replace `POST async-chat` send; use replay for reads after send, FCM, or reconnect.
+
+- **Endpoint:** `GET /api/thot/conversations/{sessionId}/messages` (alias: `GET /api/async/replay/{sessionId}/messages`)
+- **Method:** GET
+- **Auth:** Laravel Passport (`Authorization: Bearer`)
+- **Feature flag:** `THOT_REPLAY_API_ENABLED` (server `config/async.php`; mobile runtime-config)
+
+**Query parameters:**
+
+| Name | Type | Required | Description |
+|---|---|---|---|
+| after_sequence | integer | No | Keyset cursor — return rows with `message_sequence` greater than this value. |
+| after_uuid | uuid | No | Tie-breaker when `after_sequence` is equal. |
+| limit | integer | No | Page size (default 50, max 100). |
+| order | string | No | `asc` (default) or `desc`. |
+
+**Visibility rules:**
+
+| Viewer | Counsellor messages (`status=2`) |
+|---|---|
+| User (session owner) | Only when `released_to_user=true`, `delivery_state=released`, and `available_at <= now()`. |
+| Counsellor (assigned) | All messages in session. |
+
+**Success (200):**
+
+```json
+{
+  "status": true,
+  "data": {
+    "session_id": 12345,
+    "viewer_role": "user",
+    "messages": [
+      {
+        "product": "thot_async",
+        "message_uuid": "…",
+        "message_sequence": 1,
+        "sender_role": "user",
+        "display_body": "…",
+        "translation_status": "completed",
+        "delivery_state": "released",
+        "available_at": "2026-05-23T12:00:00+00:00",
+        "legacy": { "status": "1", "msgType": "0" }
+      }
+    ],
+    "cursor": {
+      "oldest_sequence": 1,
+      "newest_sequence": 10,
+      "has_more": false,
+      "next_after_sequence": null
+    }
+  }
+}
+```
+
+**Related write endpoints (unchanged):**
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/counselor-async-user` | Open/resume ThOT session |
+| `POST /api/async-chat` | User send (response still returns legacy list when replay disabled on client) |
+| `POST /api/tot-user-audio-to-text` | Voice note |
+
+**Counsellor web (session auth):** `GET /tot-chat/replay/{session_id}` — same JSON shape; gated by `THOT_COUNSELLOR_REPLAY_JSON_ENABLED`.
+
+## 42b. ThOT Async — WebSocket notification nudges (Stage 3)
+
+Notification-only private channels (Soketi/Pusher). **No message bodies on the wire** — clients debounce and call replay (§42a).
+
+**Channels:** `private-async.session.{sessionId}`, `private-async.counsellor.{userId}`, `private-async.user.{userId}`
+
+**Events (broadcast as):**
+
+| Event | When | Client action |
+|---|---|---|
+| `AsyncMessageAvailable` | User message translated; counsellor message released | `GET` replay |
+| `AsyncConversationUpdated` | Session status / assignment change | Refresh inbox / replay |
+| `AsyncUnreadCountChanged` | Unread counters shift | Badge update |
+
+**Envelope:**
+
+```json
+{
+  "contract_version": "1.0",
+  "product": "thot_async",
+  "event": "AsyncMessageAvailable",
+  "event_id": "uuid",
+  "emitted_at": "ISO8601",
+  "session_id": 12345,
+  "payload": {
+    "message_uuid": "…",
+    "sender_role": "user",
+    "released_at": null
+  }
+}
+```
+
+**Flags:** `THOT_WS_ENABLED`, `THOT_WS_NUDGES_ENABLED` (server + mobile runtime-config). ThOT RTDB nudges removed in Stage 8 — WS only.
+
+## 42c. ThOT Async — Delayed delivery (Stage 4)
+
+Counsellor messages are held until `available_at` (`THOT_RELEASE_DELAY_SECONDS`, default **900**). User FCM and WS nudges fire on **release**, not on counsellor send.
+
+**Release:** `php artisan thot:release-pending-messages` (scheduled every minute when `THOT_RELEASE_SCHEDULER_ENABLED=true`).
+
+**POST `async-chat` (user send)** when `THOT_ASYNC_CHAT_MINIMAL_RESPONSE=true` (defaults with `THOT_REPLAY_API_ENABLED`):
+
+```json
+{
+  "status": true,
+  "use_replay": true,
+  "response": {
+    "mode": "ack",
+    "sent": {
+      "message_uuid": "…",
+      "message_sequence": 12,
+      "status": "1",
+      "created": true
+    },
+    "messages": []
+  }
+}
+```
+
+Clients must load history via §42a replay. Held counsellor rows are excluded from user replay and legacy list filters (`released_to_user`, `delivery_state=released`, `available_at <= now()`).
+
+**Rollback:** `THOT_RELEASE_DELAY_SECONDS=0` (instant release after translate) or `THOT_ASYNC_CHAT_MINIMAL_RESPONSE=false` to restore full `response` array.
+
+## 42d. ThOT Async — Mobile FCM + replay + WS (Stage 5)
+
+Flutter loads authoritative history from §42a on session start, send ack, FCM (`async_counsellor_message`), and WS nudges (`AsyncMessageAvailable`, `AsyncConversationUpdated`).
+
+**Runtime-config flags:** `THOT_REPLAY_API_ENABLED`, `THOT_WS_ENABLED`, `THOT_WS_NUDGES_ENABLED`, `THOT_ASYNC_CHAT_MINIMAL_RESPONSE`, `THOT_PUSHER_APP_KEY`, `THOT_WS_HOST`, `THOT_WS_PORT`, `THOT_WS_SCHEME` (falls back to `CHAT_FB15_*` when ThOT keys empty).
+
+**Broadcast auth:** `POST /broadcasting/auth` with Passport bearer — channel `private-async.session.{sessionId}`.
+
+**Counsellor web:** WS nudge triggers immediate JSON replay (no RTDB listener, no `counsellorMsgReceivedTime` delay).
+
+## 42e. ThOT Async — Counsellor inbox / dashboards (Stage 6–8)
+
+When WS flags are on:
+
+- **No** RTDB paths (Stage 8 removed all `tam_chat_messages/async/*` code).
+- Inbox/list surfaces refresh via `private-async.counsellor.{counsellorId}` or `private-async.ops`.
+- **async-chats-list** reloads via `GET /tot-chats-list` on WS nudge.
+- Dashboard badges use existing REST endpoints on nudge.
+
+**Rollback:** Restore pre–Stage 8 blade/controller RTDB from git tag if WS alone is insufficient.
+
+## 42f. ThOT Async — Mobile replay-only (Stage 7)
+
+When `THOT_MOBILE_REPLAY_ONLY_ENABLED=true` (requires `ASYNC_PIPELINE_ENABLED` + `THOT_REPLAY_API_ENABLED`):
+
+- **`POST async-chat`** returns ack only (`use_replay: true`, `response.mode=ack`, `response.sent.message_uuid`) — **no message array**.
+- Flutter **never** assigns `response` list to UI; history from §42a replay only.
+- Voice-note send path still uses `POST async-chat` after upload; UI refreshes via replay.
+
+**Rollback:** `THOT_MOBILE_REPLAY_ONLY_ENABLED=false` — client may use legacy full `response` array when `THOT_ASYNC_CHAT_MINIMAL_RESPONSE=false`.
+
+## 42g. ThOT Async — Zero RTDB (Stage 8)
+
+ThOT messaging no longer reads or writes Firebase RTDB.
+
+| Surface | Authority |
+|---------|-----------|
+| Message bodies | SQL (`tam_async_chat_messages`) + §42a replay |
+| Realtime nudges | WS (`AsyncMessageAvailable`, `AsyncConversationUpdated`, `AsyncUnreadCountChanged`) |
+| Counsellor drafts | Browser `localStorage` via `thot-counsellor-draft.js` |
+| Mobile | Replay-only (§42f); no RTDB imports |
+
+**Removed:** `ThotRtdbNudgeService`, `THOT_RTDB_NUDGES_ENABLED`, all `tam_chat_messages/async/*` and `tam_thot_draft_messages` paths in ThOT controllers and blades.
+
+**Rollback:** Restore Stage 8 git tag; re-enable RTDB service and blade Firebase modules (WS + replay continue to work independently).
+
+## 42h. ThOT Async — Production hardening
+
+**Polling removed:** Counsellor/ops chat-boat use JSON replay bootstrap + WS nudge only. `user-msg-get` HTML poll retired.
+
+**Release guards:** Atomic SQL claim + `fcm_dispatched_at` / `ws_release_nudge_dispatched_at` prevent duplicate FCM/WS under concurrent workers.
+
+**Translation chaos (non-prod):** `THOT_CHAOS_TRANSLATION_TIMEOUT`, `THOT_CHAOS_TRANSLATION_MALFORMED`, `THOT_CHAOS_TRANSLATION_FAILURE_RATE` — no-op when `APP_ENV=production`.
+
+**Health:** `GET /admin/thot/health` — held/overdue release counts and translation failure backlog.
 
 ## 43. Core Translate
 
@@ -2988,6 +3448,8 @@ Translates text automatically using an LLM. Detects the source language and opti
 8. **Word count refresh:** After any ThOT user message DB update, `async_chat_refresh_user_word_count` recalculates `word_count` using Unicode-aware tokenization (CJK characters counted as ¼ word each, ceil'd).
 9. Error is logged to DB via `logtoDB`.
 
+**ThOT DB update paths:** When `type=tot` and `message_id` is set, successful DB updates always return `{code:1,text,detected_language,detected_language_full}`; `db_message` is added only when `testing:"1"`.
+
 **Catch envelope (Throwable):**
 
 ```json
@@ -3022,9 +3484,11 @@ Uploads audio files to the server. Supports standard multipart file uploads or B
 | message | string | Human-readable status message. |
 | file | string | Absolute server path to the uploaded file. Empty string `""` on failure. |
 
+**Laravel proxy (mobile):** `POST /api/upload_audio` → `YsamApiController::ysamUserAudioUpload` — multipart `file` field; success `{ "status": true, "url": "http://…", "file_path": "<server path>" }`; failure `{ "status": false, "url": "" }` (HTTP 400 on exception). **Different** from legacy `{code,message,file}` below.
+
 **Runtime (`html/api/v1/upload_audio.php`)**
 
-1. Loads only `config.php` (no `main.php` or `functions.php`). Upload directory is `global_audio_voice_note_dir` constant.
+1. Loads `private/config.php` via `require_once(__DIR__ . '/../../../private/config.php')` (no `main.php` or `functions.php`). Upload directory is `global_audio_voice_note_dir` constant.
 2. Creates the upload directory recursively if it doesn't exist (`mkdir(..., 0777, true)`).
 3. **Base64 mode (`type:"R"`):** `base64_decode` → `file_put_contents` with filename `audio_<uniqid>.wav`.
 4. **File mode (`type:"F"`):** `move_uploaded_file` with filename `<uniqid>_<original_name>`.
@@ -3123,7 +3587,7 @@ Sends a direct connection request (to initiate a 1-on-1 chat) to the author of a
 2. The helper returns a JSON string; the handler `json_decode`s it.
 3. Self-connection (`user_id === author_id`) returns `code:"0"` with `connection_self_error`.
 4. Checks user's current plan for `tam_connections_enabled == "Y"` via `get_current_plan_summary`. If not enabled → `status:false` with `upgrade_subscription`.
-5. On success: creates/updates a `tam_connections_conversation_master` room (`tam_room_<min>_<max>`) via `INSERT ... ON DUPLICATE KEY UPDATE`, then calls `update_user_connection` within a transaction.
+5. On success: creates/updates a `tam_connections_conversation_master` room (`room_<min>_<max>`) via `INSERT ... ON DUPLICATE KEY UPDATE`, then calls `update_user_connection` within a transaction.
 6. The `$output` echoing uses `is_array($output) ? json_encode($output) : $output` pattern.
 
 **Failure variants:**
@@ -3164,9 +3628,9 @@ Toggles the "follow" status, allowing a user to subscribe to or unsubscribe from
 1. Delegates to `update_user_following($connection, $user_id, $user_to_follow, true)` in `functions_ysam.php`.
 2. Validates both users exist in `reservation_users` + `reservation_users_p_details` (expects exactly 2 rows). Throws `"Invalid User"` otherwise.
 3. **Toggle logic:** Queries `reservation_user_ysam_follow` for existing row. If found, flips `reservation_user_ysam_following_active` between `"Y"` and `"N"`. If not found, inserts new row with `"Y"`.
-4. Includes `PHPMailer` (likely for notification emails on follow, though no email send is visible in the toggle path).
-5. **Bug note:** The success message references `$follow` (undefined) instead of `$new_follow`. This may cause the message to always use the "follow" label regardless of toggle direction.
-6. The `catch` block in the handler sets `$output` to a `json_encode`'d string.
+4. Includes `PHPMailer` autoload (no email send on the toggle path in current code).
+5. Success `message` uses `$new_follow` in `update_user_following()` — `follow_user_success_label` vs `unfollow_user_success_label`.
+6. The handler `catch` block sets `$output` to a `json_encode`'d string (helper returns JSON string on success).
 
 **Catch envelope (Throwable):**
 
@@ -3204,6 +3668,8 @@ Retrieves a complete list of categories available for YSAM posts, localized into
 |---|---|---|
 | category_id | mixed | `ysam_collection_type_id` from DB. |
 | category_name | string | `ysam_collection_type_name` from DB, localized per `user_lang`. |
+| supports_audio | boolean | `true` when `category_id == 1006` (podcast category). |
+| content_mode | string | `"audio"` for category `1006`, else `"text"`. |
 
 **Runtime (`html/api/v1/ysam_get_all_categories.php`)**
 
@@ -3254,7 +3720,7 @@ Aggregates metadata required to render the YSAM post creation form on the fronte
 | story_title_label | string | Localized label. |
 | story_hashtag_label | string | Localized label. |
 | story_category_label | string | Localized label. |
-| categories | array | Result of `get_all_types()` — `[{ "category_id", "category_name" }]`. |
+| categories | array | Result of `get_all_types()` — `[{ "category_id", "category_name", "supports_audio", "content_mode" }]`. |
 | story_textarea_placeholder | string | Localized placeholder text. |
 | podcast_title | string | Localized podcast section heading. |
 | podcast_label | string | Localized recording instructions (with duration limits substituted). |
@@ -3408,7 +3874,7 @@ Dynamically translates messages within the YSAM/Connections chat ecosystem. Cont
 | text | String | Yes | The text to translate. Consecutive ellipses collapsed (`...+` → `... `). |
 | target | String | No | Target language code (default `"en"`). |
 | user_lang | String | No | Source language hint / fallback (default `"en"`). |
-| room | String | Yes | Chat room identifier (`ysam_conversations_room_name`). Looked up in `tam_connections_conversation_master`. |
+| room | String | Yes | Chat room identifier — canonical format `room_{minUserId}_{maxUserId}` stored in `tam_connections_conversation_master.tam_conversations_room_name`. |
 | sender | Integer | Yes | Reservation user ID of the message sender. Cast to `(int)`. |
 | timestamp | String | No | Message timestamp (default: current server datetime `Y-m-d H:i:s`). |
 | user_gender | String | No | `"M"` or `"F"` → mapped to `"male"` / `"female"` for LLM context. |
@@ -3424,9 +3890,11 @@ Dynamically translates messages within the YSAM/Connections chat ecosystem. Cont
 | detected_language_full | string | Full language name (e.g. `"Spanish"`). `"Unknown"` if not in `SUPPORTED_LANGUAGES`. `"English"` if text was empty. |
 | timestamp_display | string | Formatted date in user's timezone: `"Fri, 08 May 2026 (11:06 pm)"`. |
 
+**Laravel proxy (mobile):** `POST /api/ysam_translate` → `YsamApiController::translateArticle` — Passport `auth:api`; `sender` is always token `reference_user_id` (client `sender` mismatch logged only). Pre-checks room via `Crit002eRoomAccessService`. Returns legacy `{code,text,detected_language,detected_language_full,timestamp_display}` decoded as-is (HTTP 200).
+
 **Runtime (`html/api/v1/ysam_translate.php`)**
 
-1. Loads `config.php`, `functions_init.php`, and dedicated `translation/llm_*.php` helpers (not the same as `translate.php`'s inline includes).
+1. Loads `main.php` and `html/helpers/llm_*.php` (same LLM stack as `translate.php`).
 2. **Input auto-detection:** If `$_POST` is empty, parses `php://input` as JSON and assigns to `$_POST`.
 3. **Fast skip conditions** (no LLM call):
    - Text ≤ 1 character (`mb_strlen`).
@@ -3439,7 +3907,7 @@ Dynamically translates messages within the YSAM/Connections chat ecosystem. Cont
 5. **Translation:** `handleTranslation()` calls `llm_execute('translate', ...)`. Only invoked when `!skipTranslation && sourceLanguage !== targetLanguage`.
 6. **DB connection:** Opens its **own** `mysqli_connect` (not from `main.php`), sets timezone and charset.
 7. **Message persistence (transactional):**
-   - Looks up `tam_conversations_master_id` from `tam_connections_conversation_master` by `room`. Invalid room → exception.
+   - Looks up `tam_conversations_master_id` from `tam_connections_conversation_master` by `tam_conversations_room_name = room`. Invalid/missing room → exception.
    - Inserts into `tam_connections_conversation_messages` with original + translated text, detected language, timezone, and timestamp.
    - Updates `tam_conversations_user_id_1_last_login` or `tam_conversations_user_id_2_last_login` based on sender match.
    - **Weak translation guard:** `is_weak_translation()` — if the translated text is too similar to the original (and languages differ), the insert is **skipped**.
@@ -3459,13 +3927,15 @@ Dynamically translates messages within the YSAM/Connections chat ecosystem. Cont
 POST /api.php/v1/get_default_countries
 ```
 
+**Laravel proxy (mobile):** public `GET /api/get_default_countries` → same payload shape (no bearer on Laravel route).
+
 ## Purpose
 
 Returns active countries, all currencies, and hard-coded default country/currency codes.
 
 ## Authentication
 
-Bearer required. No POST fields are read by `html/api/v1/api_get_default_countries.php`.
+Bearer required for direct `html/api.php` v1. No POST fields are read by `html/api/v1/api_get_default_countries.php`.
 
 ## Request Parameters
 
@@ -3503,4 +3973,118 @@ Top-level JSON only (no `status` / `message` envelope):
 ## Failure Response
 
 Same top-level keys; `countries` and `currencies` are empty arrays; defaults remain `IN` / `INR`.
+
+## 53. API Health (probe)
+
+Lightweight liveness probe for legacy router monitoring. Listed in `html/api/api.json` as `api_health` → `api_health.php`.
+
+## Endpoint
+
+```text
+POST /api.php/v1/api_health
+```
+
+## Authentication
+
+Bearer required (same `html/api.php` gate as other v1 scripts).
+
+## Request Parameters
+
+None.
+
+## Success Response
+
+```json
+{
+  "status": "ok",
+  "timestamp": "YYYY-MM-DDTHH:MM:SSZ"
+}
+```
+
+`timestamp` is UTC ISO-8601 from `gmdate()`.
+
+## Failure Response
+
+| Case | Body |
+|---|---|
+| Direct script access without router | Plain text `Forbidden` (HTTP 403) |
+| Missing/invalid bearer | Router JSON error (HTTP 401/403) |
+
+---
+
+## Deep Link Trust apis (Laravel)
+
+**Base path:** `/api/deep-links`  
+**Protocol version:** `1.0.0`  
+**Documentation:** `tam-admin-application/docs/features/deep-link/` (see also `TAM_FLUTTER/lib/services/deep_link/deep_link_protocol_spec.md`)
+
+### GET `/api/deep-links/protocol`
+
+Returns protocol version metadata (no auth).
+
+### GET `/api/deep-links/keys`
+
+Returns trust key metadata only (`kid`, `issuer`, `sigv`, `active_from`, `expires_at`). **No secrets.**
+
+### GET `/api/deep-links/rollout-config`
+
+Returns push deep-link rollout governance (no auth). Cached up to 300s. Metadata only — no secrets.
+
+**Response:**
+
+| Field | Type | Notes |
+|---|---|---|
+| useDeepLinkPushRouting | bool | When true, Flutter routes FCM/external opens through DeepLinkService |
+| enableLegacyPushFallback | bool | When true, legacy `key` handlers may run if deep link fails |
+| enforceSignedPushRoutes | bool | When true, unsigned sensitive push routes are rejected |
+| rolloutStage | string | `observe_only` \| `dual_emit` \| `soft_enforce` \| `hard_enforce` |
+| protocolVersion | string | e.g. `1.0.0` |
+| updatedAt | string | ISO-8601 |
+| routePolicies | object | Per-route `{ fallbackAllowed, signedRequired }` metadata |
+| fallbackRetirementReadinessScore | int | 0–100 replay-route fallback retirement progress |
+| staleClientRiskScore | int | 0–100 stale-client legacy routing risk estimate |
+| staleClientMode | string | `observe_only` \| `warn_only` \| `restrict_high_trust` |
+
+**Laravel env:** see `docs/features/deep-link/environment-configuration.md` and `.env.deep-link.example`.
+
+### Artisan governance audits
+
+| Command | Purpose |
+|---|---|
+| `php artisan deep-links:audit-legacy-navigation` | Scan Flutter/Laravel for notification `pushNamed` bypasses |
+| `php artisan deep-links:audit-email-templates` | Scan email/HTML for `tam://`, handcrafted sensitive URLs |
+
+Options: `--json`, `--ci` (fail fast on high severity).
+
+### POST `/api/deep-links/sign`
+
+**Auth:** `auth:api`  
+**Rate limit:** 30/min per user  
+
+**Body:**
+
+| Field | Type | Required |
+|---|---|---|
+| base_url | string | yes |
+| path_segments | string[] | no |
+| query_params | object | no |
+| ttl_seconds | int | no (60–604800) |
+| replay_protected | bool | no |
+| campaign | string | no |
+
+**Response:** `{ status, url, protocol_version }`
+
+### POST `/api/deep-links/revoke`
+
+**Auth:** `auth:api` + observability role  
+**Body:** `{ type: signature\|campaign\|route\|issuer\|nonce, key, reason? }`
+
+### POST `/api/deep-links/ops-snapshot`
+
+**Auth:** `auth:api`  
+**Body:** `{ counters: { "<category>": <int> }, protocol_version? }` — metadata only, max 32 keys.
+
+### POST `/api/deep-links/validate-fixtures`
+
+Staging/local only. Runs backend/Flutter parity validation.
 
